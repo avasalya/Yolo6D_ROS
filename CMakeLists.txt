@@ -31,6 +31,11 @@ catkin_package(
 #  DEPENDS system_lib
 )
 
+# catkin_install_python(PROGRAMS
+# 	scripts/yolo6d_ros.py
+# 			DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations

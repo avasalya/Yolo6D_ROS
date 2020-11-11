@@ -1,10 +1,4 @@
-""" YOLO6D ROS Wrapper """
-""" TO Test
-$ create conda environment 'conda create -f environment.yml'
-$ conda activate yolo6d
-$ python3 fileName.py
-"""
-
+#! /usr/bin/env python3
 from __init__ import *
 
 # clean terminal in the beginning
@@ -22,8 +16,8 @@ class Yolo6D:
         options          = read_data_cfg(datacfg)
         fx               = float(options['fx'])
         fy               = float(options['fy'])
-        u0               = float(options['u0'])
-        v0               = float(options['v0'])
+        cx               = float(options['cx'])
+        cy               = float(options['cy'])
         weightfile       = options['weightfile']
         modelcfg         = options['modelcfg']
         meshfile         = options['meshfile']
@@ -43,17 +37,17 @@ class Yolo6D:
             torch.cuda.manual_seed(seed)
 
         # Read intrinsic camera parameters
-        self.internal_calibration = get_camera_intrinsic(u0, v0, fx, fy)
+        self.internal_calibration = get_camera_intrinsic(cx, cy, fx, fy)
 
         # Read object model information, get 3D bounding box corners
-        mesh     = MeshPly(meshfile)
+        mesh     = MeshPly(os.path.join(path, meshfile))
         vertices = np.c_[np.array(mesh.vertices), np.ones((len(mesh.vertices),1))].transpose()
         self.corners3D = get_3D_corners(vertices)
 
         # Specify model
-        self.model = Darknet(modelcfg)
+        self.model = Darknet(os.path.join(path, modelcfg))
         # load trained weights
-        self.model.load_weights(weightfile)
+        self.model.load_weights(os.path.join(path, weightfile))
         # pass to GPU
         self.model.cuda()
         # set the module in evaluation mode
@@ -147,14 +141,16 @@ class Yolo6D:
                 os._exit(0)
 
 
-def main():
+if __name__ == '__main__':
 
     # initiate ROS node
     rospy.init_node('onigiriPose', anonymous=False)
     rospy.loginfo('starting onigiriPose node....')
 
     # run Yolo6D
-    Yolo6D('txonigiri6d/txonigiri.data')
+    path = os.path.join(os.path.dirname(__file__), '../txonigiri6d')
+    datacfg = os.path.join(path, 'txonigiri.data')
+    Yolo6D(datacfg)
 
     # ros spin
     try:
@@ -165,6 +161,3 @@ def main():
     except KeyboardInterrupt:
         print('Shutting down Yolo6D ROS node')
         cv2.destroyAllWindows()
-
-if __name__ == '__main__':
-    main()
