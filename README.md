@@ -20,7 +20,7 @@ ROS wrapper for Singleshotpose on custom dataset
 ## install realsense ROS package
 * https://github.com/IntelRealSense/realsense-ros
 
-## download and unzip `txonigiri6d` within main directory
+## download and unzip `txonigiri` within main directory
 * https://www.dropbox.com/sh/wkmqd0w1tvo4592/AADWt9j5SjiklJ5X0dpsSILAa?dl=0
 
 ## change intrinsic parameters as per your camera
