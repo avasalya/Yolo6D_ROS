@@ -22,23 +22,22 @@ class Yolo6D:
         modelcfg         = options['modelcfg']
         meshfile         = options['meshfile']
         gpus             = options['gpus']
-        seed             = int(time.time())
-        use_cuda         = True
         self.classes     = 1
         self.img_width   = 640
         self.img_height  = 480
         self.conf_thresh = 0.7
 
+        # GPU settings
+        seed = int(time.time())
         torch.manual_seed(seed)
-        if use_cuda:
-            os.environ['CUDA_VISIBLE_DEVICES'] = gpus
-            torch.cuda.manual_seed(seed)
+        os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+        torch.cuda.manual_seed(seed)
 
         # read intrinsic camera parameters
         self.cam_mat = get_camera_intrinsic(cx, cy, fx, fy)
 
         # Read object model information, get 3D bounding box corners
-        mesh     = MeshPly(os.path.join(path, meshfile))
+        mesh = MeshPly(os.path.join(path, meshfile))
         vertices = np.c_[np.array(mesh.vertices), np.ones((len(mesh.vertices),1))].transpose()
         self.corners3D = get_3D_corners(vertices)
 
@@ -72,7 +71,7 @@ class Yolo6D:
         try:
             self.pose_estimator()
         except rospy.ROSException:
-            print(f'{Fore.RED}ROS Interrupted')
+            print(f'{Fore.RED}ROS Interrupted{Style.RESET_ALL}')
 
     def publisher(self, objsPose):
         pose_array = PoseArray()
@@ -108,7 +107,7 @@ class Yolo6D:
         boxesList = []
         objsPose  = []
         boxes = self.all_boxes[0]
-        print(len(boxes)-1, 'onigiri(s) found')
+        print(len(boxes)-1, f'{Fore.YELLOW}onigiri(s) found{Style.RESET_ALL}')
 
         # for each image, get all the predictions
         for j in range(len(boxes)-1):
@@ -205,7 +204,7 @@ if __name__ == '__main__':
     rospy.loginfo('starting onigiriPose node....')
 
     # run Yolo6D
-    path = os.path.join(os.path.dirname(__file__), '../txonigiri6d')
+    path = os.path.join(os.path.dirname(__file__), '../txonigiri')
     datacfg = os.path.join(path, 'txonigiri.data')
     Yolo6D(datacfg)
 
