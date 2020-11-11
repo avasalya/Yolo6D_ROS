@@ -32,3 +32,6 @@ import message_filters
 import geometry_msgs.msg as gm
 from geometry_msgs.msg import Pose, PoseArray
 from sensor_msgs.msg import Image, CompressedImage
+
+from transformations import quaternion_from_matrix
+

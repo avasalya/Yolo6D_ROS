@@ -35,8 +35,8 @@ ROS wrapper for Singleshotpose on custom dataset
 * `roslaunch realsense2_camera rs_rgbd.launch align_depth:=true`
 
 ### 2. launch rviz along with publisher/subscriber services
+*  it publishes estimated pose as geometry_msgs/PoseArray
 * `roslaunch yolo6d_ros yolo6d.launch`
-	*  it publishes estimated pose as geometry_msgs/PoseArray [TODO]
 *  also possible via
 	* `roslaunch yolo6d_ros rviz.launch`
     	* `rosrun yolo6d_ros yolo6d_ros.py`
@@ -44,6 +44,6 @@ ROS wrapper for Singleshotpose on custom dataset
 
 
 
-<br />
+<!-- <br />
 
-# Known issues
+# Known issues -->
