@@ -1,0 +1,18 @@
+<launch>
+	<arg name="rvizconfig" default="$(find yolo6d_ros)/rviz/display.rviz" />
+	<node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
+
+	<!-- <arg name="ply_model" default="$(find yolo6d_ros)/txonigiri/cup_noodle.off" /> -->
+	<!-- <arg name="mesh_file" default="$(find yolo6d_ros)/txonigiri/cup_noodle.dae" /> -->
+
+	<!-- TODO transform it as per real robot2cam -->
+	<!-- https://answers.ros.org/question/263715/fixed-frame-map-does-not-exist/ -->
+	<!-- <node pkg="tf" type="static_transform_publisher" name="robot2cam" args="0 0 0 -1.570796 0 -1.570796  robot_base_link  camera_color_optical_frame 10" /> -->
+	<!-- <node pkg="tf" type="static_transform_publisher" name="robot2cam" args="0 0 0 0 0 0 1 World  base_link 10" /> -->
+
+	<node name="onigiriPose" pkg="yolo6d_ros" type="yolo6d_ros.py" output="screen" ns = "onigiri">
+		<!-- <param name="ply_model" type="str" value="$(arg ply_model)" /> -->
+		<!-- <param name="mesh_file" type="str" value="$(arg mesh_file)" /> -->
+	</node>
+
+</launch>

@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>yolo6d_ros</name>
+  <version>2.2.13</version>
+  <description>The yolo6d_ros package</description>
+
+  <maintainer email="asheshvasalya@gmail.com">ashesh</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>eigen</depend>
+  <depend>image_transport</depend>
+  <depend>cv_bridge</depend>
+  <depend>nav_msgs</depend>
+  <depend>nodelet</depend>
+  <depend>genmsg</depend>
+  <depend>roscpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>message_runtime</depend>
+  <depend>message_filters</depend>
+  <depend>message_generation</depend>
+  <depend>geometry_msgs</depend>
+  <depend>tf</depend>
+  <depend>ddynamic_reconfigure</depend>
+  <depend>diagnostic_updater</depend>
+  <depend>librealsense2</depend>
+  <depend>rospy</depend>
+  <depend>vision_msgs</depend>
+  <depend>visualization_msgs</depend>
+
+</package>
