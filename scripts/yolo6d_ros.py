@@ -25,7 +25,7 @@ class Yolo6D:
         self.classes     = 1
         self.img_width   = 640
         self.img_height  = 480
-        self.conf_thresh = 0.7
+        self.conf_thresh = 0.5
 
         # GPU settings
         seed = int(time.time())
