@@ -19,7 +19,6 @@ from skimage.transform import resize
 import warnings
 warnings.filterwarnings("ignore")
 
-import dataset
 from utils import *
 from darknet import Darknet
 from MeshPly import MeshPly
