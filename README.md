@@ -25,7 +25,7 @@ ROS wrapper for Singleshotpose on custom dataset
 
 ## change intrinsic parameters as per your camera
 * fx, fy, cx, cy
-	* `txonigiri6d/txonigiri.data`
+	* `txonigiri/txonigiri.data`
 
 
 <br />
