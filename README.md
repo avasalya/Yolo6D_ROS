@@ -1,5 +1,5 @@
 # Yolo6D_ROS
-ROS wrapper for Singleshotpose on custom dataset
+ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 
 ****
 * tested on Ubuntu 18.04, ROS Melodic, RTX 2080-Ti, CUDA 10.1N, Python3.7, PyTorch 1.4.1
