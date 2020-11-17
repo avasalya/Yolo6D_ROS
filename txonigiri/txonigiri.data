@@ -1,0 +1,8 @@
+meshfile = txonigiri.ply
+modelcfg = yolo-pose.cfg
+weightfile = modelv5.1.weights
+gpus = 0
+fx = 605.286
+fy = 605.699
+cx = 320.075
+cy = 247.877

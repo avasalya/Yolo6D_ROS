@@ -147,6 +147,10 @@ class Yolo6D:
                     'qz':quat[3]}
             objsPose.append(pose)
 
+            # '''publish only if predicted pose is within the respective bbox'''
+            # if  (min(cmax,rmax) < center[0] and center[0] < max(cmax,rmax)) and \
+            #     (min(cmin,rmin) < center[1] and center[1] < max(cmin,rmin)):
+
         # publish pose as ros-msg
         self.publisher(objsPose)
 
