@@ -2,7 +2,7 @@
 ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 
 ****
-* tested on Ubuntu 18.04, ROS Melodic, RTX 2080-Ti, CUDA 10.1N, Python3.7, PyTorch 1.4.1
+* tested on Ubuntu 18.04, ROS Melodic, RTX 2080-Ti, CUDA 10.1, Python3.7, PyTorch 1.4.1
 * git clone in your catkin_ws https://github.com/avasalya/Yolo6D_ROS.git
 * refer `environment.yml` for other anaconda packages
 

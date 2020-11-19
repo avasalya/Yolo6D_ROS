@@ -6,7 +6,6 @@ import getpass
 import math as m
 import numpy as np
 import random as rand
-import numpy.ma as ma
 
 import torch
 from torch.autograd import Variable
