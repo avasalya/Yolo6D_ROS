@@ -90,8 +90,6 @@ Visualization Manager:
         All Enabled: false
         camera_aligned_depth_to_color_frame:
           Value: false
-        camera_aligned_depth_to_infra1_frame:
-          Value: false
         camera_color_frame:
           Value: false
         camera_color_optical_frame:
@@ -99,14 +97,6 @@ Visualization Manager:
         camera_depth_frame:
           Value: false
         camera_depth_optical_frame:
-          Value: false
-        camera_infra1_frame:
-          Value: false
-        camera_infra1_optical_frame:
-          Value: false
-        camera_infra2_frame:
-          Value: false
-        camera_infra2_optical_frame:
           Value: false
         camera_link:
           Value: false
@@ -120,18 +110,10 @@ Visualization Manager:
           camera_aligned_depth_to_color_frame:
             camera_color_optical_frame:
               {}
-          camera_aligned_depth_to_infra1_frame:
-            camera_infra1_optical_frame:
-              {}
           camera_color_frame:
             {}
           camera_depth_frame:
             camera_depth_optical_frame:
-              {}
-          camera_infra1_frame:
-            {}
-          camera_infra2_frame:
-            camera_infra2_optical_frame:
               {}
       Update Interval: 0
       Value: true
@@ -191,25 +173,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.9565134048461914
+      Distance: 1.0406639575958252
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.07474453002214432
-        Y: -0.0042867581360042095
-        Z: 0.3568844199180603
+        X: -0.03658986836671829
+        Y: -0.08103235810995102
+        Z: 0.3855910897254944
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: -1.4397963285446167
+      Pitch: -1.0247966051101685
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.733157157897949
+      Yaw: 4.693154811859131
     Saved: ~
 Window Geometry:
   Displays:
@@ -229,5 +211,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1002
-  X: 2076
-  Y: 76
+  X: 635
+  Y: 126
