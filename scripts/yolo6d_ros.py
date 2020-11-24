@@ -151,7 +151,6 @@ class Yolo6D:
             img = cv2.line(img, tuple(axisPoints[3].ravel()),
                             tuple(axisPoints[2].ravel()), (0,0,255), 2)
 
-
     def visualize(self, img, boxesList, drawCuboid=True):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         if drawCuboid:
