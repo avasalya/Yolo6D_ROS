@@ -73,26 +73,6 @@ class Yolo6D:
         except rospy.ROSException:
             print(f'{Fore.RED}ROS Interrupted{Style.RESET_ALL}')
 
-    def publisher(self, objsPose):
-        pose_array = PoseArray()
-        pose_array.header.stamp = rospy.Time.now()
-        pose_array.header.frame_id = 'camera_color_optical_frame'
-        poses = objsPose
-
-        for p in range(len(poses)):
-            pose2msg = Pose()
-            pose2msg.position.x = poses[p]['tx']
-            pose2msg.position.y = poses[p]['ty']
-            pose2msg.position.z = poses[p]['tz']
-            pose2msg.orientation.w = poses[p]['qw']
-            pose2msg.orientation.x = poses[p]['qx']
-            pose2msg.orientation.y = poses[p]['qy']
-            pose2msg.orientation.z = poses[p]['qz']
-            pose_array.poses.append(pose2msg)
-            print(f'{Fore.RED} poseArray{Style.RESET_ALL}', pose_array.poses[p])
-
-        self.pose_pub.publish(pose_array)
-
     def pose_estimator(self):
         # transform into Tensor
         data = Variable(self.transform(self.img)).cuda().unsqueeze(0)
@@ -150,12 +130,27 @@ class Yolo6D:
             # '''publish only if predicted pose is within the respective bbox'''
             # if  (min(cmax,rmax) < center[0] and center[0] < max(cmax,rmax)) and \
             #     (min(cmin,rmin) < center[1] and center[1] < max(cmin,rmin)):
+            #         objsPose.append(pose)
+
+        # visualize Projections
+        self.visualize(self.img, boxesList, drawCuboid=True)
 
         # publish pose as ros-msg
         self.publisher(objsPose)
 
-        # visualize Projections
-        self.visualize(self.img, boxesList, drawCuboid=True)
+    def draw_axis(self, img, rot, pos, cam_mat, drawAxis=False):
+        # How+to+draw+3D+Coordinate+Axes+with+OpenCV+for+face+pose+estimation%3f
+        if drawAxis:
+            rotV, _ = cv2.Rodrigues(rot)
+            points = np.float32([[.1, 0, 0], [0, .1, 0], [0, 0, .1], [0, 0, 0]]).reshape(-1, 3)
+            axisPoints, _ = cv2.projectPoints(points, rotV, pos, cam_mat, (0, 0, 0, 0))
+            img = cv2.line(img, tuple(axisPoints[3].ravel()),
+                            tuple(axisPoints[0].ravel()), (255,0,0), 2)
+            img = cv2.line(img, tuple(axisPoints[3].ravel()),
+                            tuple(axisPoints[1].ravel()), (0,255,0), 2)
+            img = cv2.line(img, tuple(axisPoints[3].ravel()),
+                            tuple(axisPoints[2].ravel()), (0,0,255), 2)
+
 
     def visualize(self, img, boxesList, drawCuboid=True):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -187,19 +182,25 @@ class Yolo6D:
             except SystemExit:
                 os._exit(0)
 
-    def draw_axis(self, img, rot, pos, cam_mat, drawAxis=False):
-        # How+to+draw+3D+Coordinate+Axes+with+OpenCV+for+face+pose+estimation%3f
-        if drawAxis:
-            rotV, _ = cv2.Rodrigues(rot)
-            points = np.float32([[.1, 0, 0], [0, .1, 0], [0, 0, .1], [0, 0, 0]]).reshape(-1, 3)
-            axisPoints, _ = cv2.projectPoints(points, rotV, pos, cam_mat, (0, 0, 0, 0))
-            img = cv2.line(img, tuple(axisPoints[3].ravel()),
-                            tuple(axisPoints[0].ravel()), (255,0,0), 2)
-            img = cv2.line(img, tuple(axisPoints[3].ravel()),
-                            tuple(axisPoints[1].ravel()), (0,255,0), 2)
-            img = cv2.line(img, tuple(axisPoints[3].ravel()),
-                            tuple(axisPoints[2].ravel()), (0,0,255), 2)
+    def publisher(self, objsPose):
+        pose_array = PoseArray()
+        pose_array.header.stamp = rospy.Time.now()
+        pose_array.header.frame_id = 'camera_color_optical_frame'
+        poses = objsPose
 
+        for p in range(len(poses)):
+            pose2msg = Pose()
+            pose2msg.position.x = poses[p]['tx']
+            pose2msg.position.y = poses[p]['ty']
+            pose2msg.position.z = poses[p]['tz']
+            pose2msg.orientation.w = poses[p]['qw']
+            pose2msg.orientation.x = poses[p]['qx']
+            pose2msg.orientation.y = poses[p]['qy']
+            pose2msg.orientation.z = poses[p]['qz']
+            pose_array.poses.append(pose2msg)
+            # print(f'{Fore.RED} poseArray{Style.RESET_ALL}', pose_array.poses[p])
+
+        self.pose_pub.publish(pose_array)
 
 if __name__ == '__main__':
 
