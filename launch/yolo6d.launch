@@ -1,7 +1,12 @@
 <launch>
-	<arg name="rvizconfig" default="$(find yolo6d_ros)/rviz/display.rviz" />
-	<node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
+    <arg name="rvizconfig" default="$(find yolo6d_ros)/rviz/display.rviz" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" />
 
-	<node name="onigiriPose" pkg="yolo6d_ros" type="yolo6d_ros.py" output="screen" ns = "onigiri">
-	</node>
+    <!-- start realsenseD435 alignedDepth:true -->
+    <!-- <include file="$(find realsense2_camera)/launch/rs_rgbd.launch">
+        <arg name="align_depth"  default="true"/>
+    </include> -->
+
+    <node name="onigiriPose" pkg="yolo6d_ros" type="yolo6d_ros.py" output="screen" ns = "onigiri">
+    </node>
 </launch>

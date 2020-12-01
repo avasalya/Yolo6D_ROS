@@ -175,16 +175,13 @@ class Yolo6D:
         key = cv2.waitKey(1) & 0xFF
         if key == 27:
             print('stopping, keyboard interrupt')
-            # sys.exit()
-            try:
-                sys.exit(1)
-            except SystemExit:
-                os._exit(0)
+            os._exit(0)
 
     def publisher(self, objsPose):
         pose_array = PoseArray()
         pose_array.header.stamp = rospy.Time.now()
         pose_array.header.frame_id = 'camera_color_optical_frame'
+        # pose_array.header.frame_id = 'world'
         poses = objsPose
 
         for p in range(len(poses)):
@@ -215,9 +212,9 @@ if __name__ == '__main__':
     # ros spin
     try:
         rospy.spin()
-        rate = rospy.Rate(50)
+        rate = rospy.Rate(1.0)
         while not rospy.is_shutdown():
-            rate.sleep()
+            rate.sleep(1)
     except KeyboardInterrupt:
         print('Shutting down Yolo6D ROS node')
         cv2.destroyAllWindows()

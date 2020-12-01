@@ -13,10 +13,10 @@ dependencies:
   - bash=4.4.18=h67949de_1000
   - blas=1.0=openblas
   - bzip2=1.0.8=h516909a_3
-  - ca-certificates=2020.6.20=hecda079_0
+  - ca-certificates=2020.11.8=ha878542_0
   - cairo=1.14.12=h80bd089_1005
   - catkin_pkg=0.4.23=pyh9f0ad1d_0
-  - certifi=2020.6.20=py37he5f6b98_2
+  - certifi=2020.11.8=py37h06a4308_0
   - cffi=1.14.1=py37h2b28604_0
   - cloudpickle=1.6.0=py_0
   - colorama=0.4.4=py_0
@@ -65,7 +65,6 @@ dependencies:
   - libiconv=1.16=h516909a_0
   - liblapack=3.8.0=17_openblas
   - libopenblas=0.3.10=pthreads_hb3c22a3_4
-  - libopencv=3.4.2=hb342d67_1
   - libpng=1.6.37=hed695b0_2
   - libsodium=1.0.18=h7b6447c_0
   - libstdcxx-ng=9.3.0=hdf63c60_16
@@ -87,7 +86,6 @@ dependencies:
   - numpy=1.19.1=py37h30dfecb_0
   - numpy-base=1.19.1=py37h75fe3a5_0
   - olefile=0.46=py_0
-  - opencv=3.4.2=py37h6fd60c2_1
   - openh264=1.8.0=hdbcaa40_1000
   - openssl=1.0.2u=h516909a_0
   - pandas=1.1.1=py37he6710b0_0
@@ -100,7 +98,6 @@ dependencies:
   - prompt-toolkit=3.0.8=py_0
   - pthread-stubs=0.4=h14c3975_1001
   - ptyprocess=0.6.0=py37_0
-  - py-opencv=3.4.2=py37hb342d67_1
   - pycparser=2.20=pyh9f0ad1d_2
   - pygments=2.7.2=pyhd3eb1b0_0
   - pylint=2.6.0=py37_0
@@ -115,7 +112,6 @@ dependencies:
   - pyzmq=19.0.2=py37he6710b0_1
   - readline=7.0=hf8c457e_1001
   - rospkg=1.2.8=pyh9f0ad1d_0
-  - scikit-image=0.16.2=py37h0573a6f_0
   - scipy=1.5.2=py37habc2bb6_0
   - setuptools=49.6.0=py37hc8dfbb8_0
   - six=1.15.0=pyh9f0ad1d_0
@@ -152,9 +148,7 @@ dependencies:
   - zlib=1.2.11=h516909a_1009
   - zstd=1.4.5=h6597ccf_2
   - pip:
-    - opencv-contrib-python==4.4.0.46
-    - opencv-python==4.4.0.46
-    - opencv-python-headless==4.4.0.46
+    - opencv-python==4.4.0.42
     - pillow==6.2.2
     - pycocotools==2.0.2
     - pyqt5==5.15.1

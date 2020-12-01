@@ -22,6 +22,7 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 
 ## download and unzip `txonigiri` within main directory
 * https://www.dropbox.com/sh/wkmqd0w1tvo4592/AADWt9j5SjiklJ5X0dpsSILAa?dl=0
+	* weights v1.xs and v2.xs were trained on synthetic dataset and v3.x onwards on real dataset
 
 ## change intrinsic parameters as per your camera
 * fx, fy, cx, cy

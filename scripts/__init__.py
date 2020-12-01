@@ -13,8 +13,6 @@ from torchvision import datasets, transforms
 
 import PIL.Image as Image
 
-from skimage.transform import resize
-
 import warnings
 warnings.filterwarnings("ignore")
 

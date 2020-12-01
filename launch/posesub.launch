@@ -1,0 +1,4 @@
+<launch>
+	<node name="posesub" pkg="yolo6d_ros" type="poseSubscriber.py" output="screen" ns = "onigirisub"></node>
+	<node pkg="tf2_ros" type="static_transform_publisher" name="camera_color_optical_frame" args="0 0 0 0 0 0 1 world" />
+</launch>
