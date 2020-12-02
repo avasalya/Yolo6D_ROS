@@ -28,6 +28,10 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 * fx, fy, cx, cy
 	* `txonigiri/txonigiri.data`
 
+## tune `conf_thresh`
+* consider tuning `conf_thresh` as per your *scene* to avoid double detection and for better performance
+	* change value @ [scripts/yolo6d_ros.py#L28](https://github.com/avasalya/Yolo6D_ROS/blob/6efdb5f191a70c243937c2b388e3093c6e5ebcdd/scripts/yolo6d_ros.py#L28)
+
 
 <br />
 
@@ -46,8 +50,8 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 
 ### 3. output
 * you should see output similar to this
-* ![Alt text](img/onigiripick.png?raw=true "yolo6d pose")
-* ![Alt text](img/yolo6dpose.png?raw=true "yolo6d pose")
+![Alt text](img/onigiripick.png?raw=true "yolo6d pose")
+![Alt text](img/yolo6dpose.png?raw=true "yolo6d pose")
 
 <!-- <br />
 

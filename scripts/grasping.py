@@ -14,7 +14,7 @@ from colorama       import Fore, Style
 try:
     from aist_routines.base import AISTBaseRoutines
 except ImportError as e:
-    print(Fore.RED + 'dependencies missing wont work unless you can access aist_routines module' + Style.RESET_ALL)
+    print(Fore.RED + 'dependencies missing, will not work unless you have access to aist_routines module' + Style.RESET_ALL)
 
 ######################################################################
 #  class CheckCalibrationRoutines                                    #
