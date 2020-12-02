@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <arg name="config"		default="mocap"/>
+  <arg name="camera_name"	default="realsenseD435"/>
+  <arg name="ns"		default="/"/>
+
+  <node ns="$(arg ns)" name="grasping"
+	pkg="yolo6d_ros" type="grasping.py"
+	output="screen">
+    <rosparam file="$(find aist_handeye_calibration)/config/$(arg config)/$(arg camera_name).yaml"/>
+    <rosparam file="$(find aist_routines)/config/$(arg config)_config.yaml"/>
+  </node>
+
+</launch>
+
+<!-- original
+  roslaunch aist_handeye_calibration check_calibration.launch config:=mocap camera_name:=realsenseD435
+-->
+<!-- to use
+  roslaunch yolo6d_ros grasping.launch
+-->

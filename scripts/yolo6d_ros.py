@@ -11,7 +11,7 @@ else:
 
 class Yolo6D:
 
-    def __init__(self, datacfg):
+    def __init__(self, datacfg, subTopic, frameID):
         # parameters
         options          = read_data_cfg(datacfg)
         fx               = float(options['fx'])
@@ -25,7 +25,8 @@ class Yolo6D:
         self.classes     = 1
         self.img_width   = 640
         self.img_height  = 480
-        self.conf_thresh = 0.35
+        self.conf_thresh = 0.7
+        self.frameID     = frameID
 
         # GPU settings
         seed = int(time.time())
@@ -57,7 +58,7 @@ class Yolo6D:
         self.transform = transforms.Compose([transforms.ToTensor()])
 
         # subscribe to RGB topic
-        self.rgb_sub = message_filters.Subscriber('/camera/color/image_raw', Image)
+        self.rgb_sub = message_filters.Subscriber(subTopic, Image)
         self.rgb_sub.registerCallback(self.callback)
 
         # publish poseArray
@@ -104,6 +105,13 @@ class Yolo6D:
             # compute [R|t] by PnP
             R_pr, t_pr = pnp(np.array(np.transpose(np.concatenate((np.zeros((3, 1)), self.corners3D[:3, :]), axis=1)), dtype='float32'),  corners2D_pr, np.array(self.cam_mat, dtype='float32'))
 
+            # transform to align with aist ur5 ef frame
+            if sys.argv[1] == 'pnp':
+                Rx = rotation_matrix(m.pi/2, [-1, 0, 0], t_pr.ravel())
+                Rz = rotation_matrix(m.pi/2, [0, 0, -1], t_pr.ravel())
+                offR = concatenate_matrices(Rx)[:3,:3]
+                R_pr = np.dot(R_pr, offR[:3, :3])
+
             Rt_pr = np.concatenate((R_pr, t_pr), axis=1)
 
             # compute projections
@@ -120,17 +128,12 @@ class Yolo6D:
             pose = {
                     'tx':pos[0][0],
                     'ty':pos[0][1],
-                    'tz':pos[0][2],
+                    'tz':pos[0][2] - 0.1,
                     'qw':quat[0],
                     'qx':quat[1],
                     'qy':quat[2],
                     'qz':quat[3]}
             objsPose.append(pose)
-
-            # '''publish only if predicted pose is within the respective bbox'''
-            # if  (min(cmax,rmax) < center[0] and center[0] < max(cmax,rmax)) and \
-            #     (min(cmin,rmin) < center[1] and center[1] < max(cmin,rmin)):
-            #         objsPose.append(pose)
 
         # visualize Projections
         self.visualize(self.img, boxesList, drawCuboid=True)
@@ -180,8 +183,7 @@ class Yolo6D:
     def publisher(self, objsPose):
         pose_array = PoseArray()
         pose_array.header.stamp = rospy.Time.now()
-        pose_array.header.frame_id = 'camera_color_optical_frame'
-        # pose_array.header.frame_id = 'world'
+        pose_array.header.frame_id = self.frameID
         poses = objsPose
 
         for p in range(len(poses)):
@@ -194,7 +196,7 @@ class Yolo6D:
             pose2msg.orientation.y = poses[p]['qy']
             pose2msg.orientation.z = poses[p]['qz']
             pose_array.poses.append(pose2msg)
-            # print(f'{Fore.RED} poseArray{Style.RESET_ALL}', pose_array.poses[p])
+            print(f'{Fore.RED} poseArray{Style.RESET_ALL}', pose_array.poses[p])
 
         self.pose_pub.publish(pose_array)
 
@@ -207,7 +209,12 @@ if __name__ == '__main__':
     # run Yolo6D
     path = os.path.join(os.path.dirname(__file__), '../txonigiri')
     datacfg = os.path.join(path, 'txonigiri.data')
-    Yolo6D(datacfg)
+    if len(sys.argv) > 1 and sys.argv[1] == 'pnp':
+        Yolo6D(datacfg, '/realsenseD435/color/image_raw', 'calibrated_realsenseD435_color_optical_frame')
+        rospy.logwarn('publishing onigiri(s) pose for Pick-n-Place experiment')
+    else:
+        Yolo6D(datacfg, '/camera/color/image_raw', 'camera_color_optical_frame')
+        rospy.logwarn('publishing onigiri(s) pose, do whatever you want with it')
 
     # ros spin
     try:
