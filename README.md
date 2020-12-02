@@ -44,6 +44,10 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
     * or simply `python3 scripts/yolo6d_ros.py`
 
 
+### 3. output
+* you should see output similar to this
+* ![Alt text](img/onigiripick.png?raw=true "yolo6d pose")
+* ![Alt text](img/yolo6dpose.png?raw=true "yolo6d pose")
 
 <!-- <br />
 
