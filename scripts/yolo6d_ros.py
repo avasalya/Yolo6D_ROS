@@ -120,26 +120,11 @@ class Yolo6D:
             proj_corners_pr = np.transpose(compute_projection(self.corners3D, Rt_pr, self.cam_mat))
             boxesList.append(proj_corners_pr)
 
-            # print(proj_corners_pr[1], proj_corners_pr[3], proj_corners_pr[5], proj_corners_pr[7])
-
             # draw axes
             rotV, _ = cv2.Rodrigues(R_pr)
             points = np.float32([[.1, 0, 0], [0, .1, 0], [0, 0, .1], [0, 0, 0]]).reshape(-1, 3)
             axisPoints, _ = cv2.projectPoints(points, rotV, t_pr, self.cam_mat, (0, 0, 0, 0))
             self.draw_axis(self.img, axisPoints)
-
-            """ # get depth value at t_pr(x,y) """
-            depth = self.depth
-            # depth = cv2.normalize(self.depth, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-            # cv2.imshow("depth ros2numpy", depth), cv2.waitKey(1)
-
-            # depthxy = depth[int(np.round(tuple(axisPoints[3].ravel())[0])), int(np.round(tuple(axisPoints[3].ravel())[1]))]
-            # print('actual depth at', tuple(axisPoints[3].ravel()), depthxy)
-
-
-            # add offset in depth
-            # t_pr[2] = t_pr[2] - 0.1
-            # t_pr[2] = depthxy
 
             # convert pose to ros-msg
             poseTransform = np.concatenate((Rt_pr, np.asarray([[0, 0, 0, 1]])), axis=0)
