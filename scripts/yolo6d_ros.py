@@ -1,17 +1,9 @@
 #! /usr/bin/env python3
 from __init__ import *
 
-# clean terminal in the beginning
-username = getpass.getuser()
-osName = os.name
-if osName == 'posix':
-    os.system('clear')
-else:
-    os.system('cls')
-
 class Yolo6D:
 
-    def __init__(self, datacfg, subTopic, frameID):
+    def __init__(self, datacfg, subRGBTopic, subDepthTopic, frameID):
         # parameters
         options          = read_data_cfg(datacfg)
         fx               = float(options['fx'])
@@ -58,21 +50,31 @@ class Yolo6D:
         self.transform = transforms.Compose([transforms.ToTensor()])
 
         # subscribe to RGB topic
-        self.rgb_sub = message_filters.Subscriber(subTopic, Image)
-        self.rgb_sub.registerCallback(self.callback)
+        self.rgb_sub = message_filters.Subscriber(subRGBTopic, Image)
+        self.depth_sub = message_filters.Subscriber(subDepthTopic, Image)
 
-        # publish poseArray
-        self.pose_pub = rospy.Publisher('/onigiriPose', PoseArray) #, queue_size=10
+        # self.ts = message_filters.TimeSynchronizer([self.rgb_sub, self.depth_sub], 9)
+        self.ts = message_filters.ApproximateTimeSynchronizer([self.rgb_sub, self.depth_sub], 10, 1)
 
-    def callback(self, Image):
+        self.ts.registerCallback(self.callback)
+        # self.rgb_sub.registerCallback(self.callback)
+
+        # publish PoseArray, MarkerArray
+        self.pose_pub = rospy.Publisher('/onigiriPose', PoseArray)
+        self.marker_pub = rospy.Publisher('/onigiriPoseMarker', MarkerArray)
+
+
+    def callback(self, rgb, depth):
         # convert ros-msg into numpy array
-        self.img = np.frombuffer(Image.data, dtype=np.uint8).reshape(Image.height, Image.width, -1)
+        self.img = np.frombuffer(rgb.data, dtype=np.uint8).reshape(rgb.height, rgb.width, -1)
+        self.depth = np.frombuffer(depth.data, dtype=np.float32).reshape(depth.height, depth.width, -1)
 
         # estimate pose
         try:
             self.pose_estimator()
         except rospy.ROSException:
             print(f'{Fore.RED}ROS Interrupted{Style.RESET_ALL}')
+
 
     def pose_estimator(self):
         # transform into Tensor
@@ -106,7 +108,7 @@ class Yolo6D:
             R_pr, t_pr = pnp(np.array(np.transpose(np.concatenate((np.zeros((3, 1)), self.corners3D[:3, :]), axis=1)), dtype='float32'),  corners2D_pr, np.array(self.cam_mat, dtype='float32'))
 
             # transform to align with aist ur5 ef frame
-            if sys.argv[1] == 'pnp':
+            if len(sys.argv) > 1 and sys.argv[1] == 'pnp':
                 Rx = rotation_matrix(m.pi/2, [-1, 0, 0], t_pr.ravel())
                 Rz = rotation_matrix(m.pi/2, [0, 0, -1], t_pr.ravel())
                 offR = concatenate_matrices(Rx)[:3,:3]
@@ -118,8 +120,26 @@ class Yolo6D:
             proj_corners_pr = np.transpose(compute_projection(self.corners3D, Rt_pr, self.cam_mat))
             boxesList.append(proj_corners_pr)
 
+            # print(proj_corners_pr[1], proj_corners_pr[3], proj_corners_pr[5], proj_corners_pr[7])
+
             # draw axes
-            self.draw_axis(self.img, R_pr, t_pr, self.cam_mat, drawAxis=True)
+            rotV, _ = cv2.Rodrigues(R_pr)
+            points = np.float32([[.1, 0, 0], [0, .1, 0], [0, 0, .1], [0, 0, 0]]).reshape(-1, 3)
+            axisPoints, _ = cv2.projectPoints(points, rotV, t_pr, self.cam_mat, (0, 0, 0, 0))
+            self.draw_axis(self.img, axisPoints)
+
+            """ # get depth value at t_pr(x,y) """
+            depth = self.depth
+            # depth = cv2.normalize(self.depth, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+            # cv2.imshow("depth ros2numpy", depth), cv2.waitKey(1)
+
+            # depthxy = depth[int(np.round(tuple(axisPoints[3].ravel())[0])), int(np.round(tuple(axisPoints[3].ravel())[1]))]
+            # print('actual depth at', tuple(axisPoints[3].ravel()), depthxy)
+
+
+            # add offset in depth
+            # t_pr[2] = t_pr[2] - 0.1
+            # t_pr[2] = depthxy
 
             # convert pose to ros-msg
             poseTransform = np.concatenate((Rt_pr, np.asarray([[0, 0, 0, 1]])), axis=0)
@@ -128,7 +148,7 @@ class Yolo6D:
             pose = {
                     'tx':pos[0][0],
                     'ty':pos[0][1],
-                    'tz':pos[0][2] - 0.1,
+                    'tz':pos[0][2],
                     'qw':quat[0],
                     'qx':quat[1],
                     'qy':quat[2],
@@ -141,18 +161,16 @@ class Yolo6D:
         # publish pose as ros-msg
         self.publisher(objsPose)
 
-    def draw_axis(self, img, rot, pos, cam_mat, drawAxis=False):
-        # How+to+draw+3D+Coordinate+Axes+with+OpenCV+for+face+pose+estimation%3f
-        if drawAxis:
-            rotV, _ = cv2.Rodrigues(rot)
-            points = np.float32([[.1, 0, 0], [0, .1, 0], [0, 0, .1], [0, 0, 0]]).reshape(-1, 3)
-            axisPoints, _ = cv2.projectPoints(points, rotV, pos, cam_mat, (0, 0, 0, 0))
-            img = cv2.line(img, tuple(axisPoints[3].ravel()),
+
+    def draw_axis(self, img, axisPoints):
+        img = cv2.line(img, tuple(axisPoints[3].ravel()),
                             tuple(axisPoints[0].ravel()), (255,0,0), 2)
-            img = cv2.line(img, tuple(axisPoints[3].ravel()),
+        img = cv2.line(img, tuple(axisPoints[3].ravel()),
                             tuple(axisPoints[1].ravel()), (0,255,0), 2)
-            img = cv2.line(img, tuple(axisPoints[3].ravel()),
+        img = cv2.line(img, tuple(axisPoints[3].ravel()),
                             tuple(axisPoints[2].ravel()), (0,0,255), 2)
+        cv2.circle(img, tuple(axisPoints[3].ravel()), 5, (0, 255, 255), -1)
+
 
     def visualize(self, img, boxesList, drawCuboid=True):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -180,7 +198,10 @@ class Yolo6D:
             print('stopping, keyboard interrupt')
             os._exit(0)
 
+
     def publisher(self, objsPose):
+        marker_array = MarkerArray()
+
         pose_array = PoseArray()
         pose_array.header.stamp = rospy.Time.now()
         pose_array.header.frame_id = self.frameID
@@ -198,7 +219,35 @@ class Yolo6D:
             pose_array.poses.append(pose2msg)
             print(f'{Fore.RED} poseArray{Style.RESET_ALL}', pose_array.poses[p])
 
+            marker = Marker()
+            marker.header.stamp = rospy.Time.now()
+            marker.header.frame_id = self.frameID
+            marker.type = marker.CUBE
+            marker.lifetime = rospy.rostime.Duration(0.1)
+            marker.action = marker.ADD
+            marker.id = p
+            marker.scale.x = 0.07
+            marker.scale.y = 0.07
+            marker.scale.z = 0.02
+            marker.color.a = 0.4
+            marker.color.r = 1.0
+            marker.color.g = 0.0
+            marker.color.b = 0.0
+            marker.pose.position.x = poses[p]['tx']
+            marker.pose.position.y = poses[p]['ty']
+            marker.pose.position.z = poses[p]['tz']
+            marker.pose.orientation.w = poses[p]['qw']
+            marker.pose.orientation.x = poses[p]['qx']
+            marker.pose.orientation.y = poses[p]['qy']
+            marker.pose.orientation.z = poses[p]['qz']
+
+            if(p > len(poses)-1):
+                marker_array.markers.pop(0)
+            marker_array.markers.append(marker)
+
         self.pose_pub.publish(pose_array)
+        self.marker_pub.publish(marker_array)
+        p = 0
 
 if __name__ == '__main__':
 
@@ -210,10 +259,14 @@ if __name__ == '__main__':
     path = os.path.join(os.path.dirname(__file__), '../txonigiri')
     datacfg = os.path.join(path, 'txonigiri.data')
     if len(sys.argv) > 1 and sys.argv[1] == 'pnp':
-        Yolo6D(datacfg, '/realsenseD435/color/image_raw', 'calibrated_realsenseD435_color_optical_frame')
+        Yolo6D(datacfg, '/realsenseD435/color/image_raw',
+                        '/realsenseD435/aligned_depth_to_color/image_raw',
+                        'calibrated_realsenseD435_color_optical_frame')
         rospy.logwarn('publishing onigiri(s) pose for Pick-n-Place experiment')
     else:
-        Yolo6D(datacfg, '/camera/color/image_raw', 'camera_color_optical_frame')
+        Yolo6D(datacfg, '/camera/color/image_raw',
+                        '/camera/aligned_depth_to_color/image_raw',
+                        'camera_color_optical_frame')
         rospy.logwarn('publishing onigiri(s) pose, do whatever you want with it')
 
     # ros spin
@@ -221,7 +274,7 @@ if __name__ == '__main__':
         rospy.spin()
         rate = rospy.Rate(1.0)
         while not rospy.is_shutdown():
-            rate.sleep(1)
+            rate.sleep(0.1)
     except KeyboardInterrupt:
         print('Shutting down Yolo6D ROS node')
         cv2.destroyAllWindows()

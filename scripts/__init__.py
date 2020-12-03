@@ -25,10 +25,24 @@ from colorama import Fore, Style
 import rospy
 import std_msgs
 import message_filters
+
 import geometry_msgs.msg as gm
 from geometry_msgs.msg import Pose, PoseArray
+
 from sensor_msgs.msg import Image, CompressedImage
+
+from visualization_msgs.msg import Marker
+from visualization_msgs.msg import MarkerArray
 
 from transformations import quaternion_from_matrix, rotation_matrix, concatenate_matrices
 
 # sys.path.append(os.path.join(os.path.dirname(__file__), "yolact"))
+
+
+# clean terminal in the beginning
+username = getpass.getuser()
+osName = os.name
+if osName == 'posix':
+    os.system('clear')
+else:
+    os.system('cls')
