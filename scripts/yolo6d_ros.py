@@ -63,6 +63,10 @@ class Yolo6D:
         self.pose_pub = rospy.Publisher('/onigiriPose', PoseArray)
         self.marker_pub = rospy.Publisher('/onigiriPoseMarker', MarkerArray)
 
+        # points to draw axes lines
+        self.points = np.float32([[.1, 0, 0], [0, .1, 0], [0, 0, .1], [0, 0, 0]]).reshape(-1, 3)
+
+
 
     def callback(self, rgb, depth):
         # convert ros-msg into numpy array
@@ -121,10 +125,7 @@ class Yolo6D:
             boxesList.append(proj_corners_pr)
 
             # draw axes
-            rotV, _ = cv2.Rodrigues(R_pr)
-            points = np.float32([[.1, 0, 0], [0, .1, 0], [0, 0, .1], [0, 0, 0]]).reshape(-1, 3)
-            axisPoints, _ = cv2.projectPoints(points, rotV, t_pr, self.cam_mat, (0, 0, 0, 0))
-            self.draw_axis(self.img, axisPoints)
+            self.draw_axis(self.img, cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0])
 
             # convert pose to ros-msg
             poseTransform = np.concatenate((Rt_pr, np.asarray([[0, 0, 0, 1]])), axis=0)
@@ -232,7 +233,7 @@ class Yolo6D:
 
         self.pose_pub.publish(pose_array)
         self.marker_pub.publish(marker_array)
-        p = 0
+
 
 if __name__ == '__main__':
 
@@ -243,6 +244,7 @@ if __name__ == '__main__':
     # run Yolo6D
     path = os.path.join(os.path.dirname(__file__), '../txonigiri')
     datacfg = os.path.join(path, 'txonigiri.data')
+
     if len(sys.argv) > 1 and sys.argv[1] == 'pnp':
         Yolo6D(datacfg, '/realsenseD435/color/image_raw',
                         '/realsenseD435/aligned_depth_to_color/image_raw',
