@@ -213,7 +213,94 @@ def convert2cpu(gpu_matrix):
 def convert2cpu_long(gpu_matrix):
     return torch.LongTensor(gpu_matrix.size()).copy_(gpu_matrix)
 
-def get_region_boxes(output, num_classes, num_keypoints, only_objectness=1, validation=True):
+def get_region_boxes0(output, conf_thresh, num_classes, num_keypoints=9, only_objectness=1, validation=False):
+
+    # Parameters
+    anchor_dim = 1
+    if output.dim() == 3:
+        output = output.unsqueeze(0)
+    batch = output.size(0)
+    # print('output.size(1)', output.size(1))
+    # print('(2*num_keypoints+1+num_classes)*anchor_dim', (2*num_keypoints+1+num_classes)*anchor_dim)
+    assert(output.size(1) == (2*num_keypoints+1+num_classes)*anchor_dim)
+    h = output.size(2)
+    w = output.size(3)
+
+    # Activation
+    t0 = time.time()
+    all_boxes = []
+    max_conf = -sys.maxsize
+    output    = output.view(batch*anchor_dim, 2*num_keypoints+1+num_classes, h*w).transpose(0,1).contiguous().view(2*num_keypoints+1+num_classes, batch*anchor_dim*h*w)
+    grid_x    = torch.linspace(0, w-1, w).repeat(h,1).repeat(batch*anchor_dim, 1, 1).view(batch*anchor_dim*h*w).cuda()
+    grid_y    = torch.linspace(0, h-1, h).repeat(w,1).t().repeat(batch*anchor_dim, 1, 1).view(batch*anchor_dim*h*w).cuda()
+
+    xs = list()
+    ys = list()
+    xs.append(torch.sigmoid(output[0]) + grid_x)
+    ys.append(torch.sigmoid(output[1]) + grid_y)
+    for j in range(1,num_keypoints):
+        xs.append(output[2*j + 0] + grid_x)
+        ys.append(output[2*j + 1] + grid_y)
+    det_confs = torch.sigmoid(output[2*num_keypoints])
+    cls_confs = torch.nn.Softmax()(Variable(output[2*num_keypoints+1:2*num_keypoints+1+num_classes].transpose(0,1))).data
+    cls_max_confs, cls_max_ids = torch.max(cls_confs, 1)
+    cls_max_confs = cls_max_confs.view(-1)
+    cls_max_ids   = cls_max_ids.view(-1)
+    t1 = time.time()
+
+    # GPU to CPU
+    sz_hw = h*w
+    sz_hwa = sz_hw*anchor_dim
+    det_confs = convert2cpu(det_confs)
+    cls_max_confs = convert2cpu(cls_max_confs)
+    cls_max_ids = convert2cpu_long(cls_max_ids)
+    for j in range(num_keypoints):
+        xs[j] = convert2cpu(xs[j])
+        ys[j] = convert2cpu(ys[j])
+    if validation:
+        cls_confs = convert2cpu(cls_confs.view(-1, num_classes))
+    t2 = time.time()
+
+    # Boxes filter
+    for b in range(batch):
+        boxes = []
+        for cy in range(h):
+            for cx in range(w):
+                for i in range(anchor_dim):
+                    ind = b*sz_hwa + i*sz_hw + cy*w + cx
+                    det_conf =  det_confs[ind]
+                    if only_objectness:
+                        conf = det_confs[ind]
+                    else:
+                        conf = det_confs[ind] * cls_max_confs[ind]
+
+                    if conf > conf_thresh:
+                        max_conf = conf
+                        bcx = list()
+                        bcy = list()
+                        for j in range(num_keypoints):
+                            bcx.append(xs[j][ind])
+                            bcy.append(ys[j][ind])
+                        cls_max_conf = cls_max_confs[ind]
+                        cls_max_id = cls_max_ids[ind]
+                        box = list()
+                        for j in range(num_keypoints):
+                            box.append(bcx[j]/w)
+                            box.append(bcy[j]/h)
+                        box.append(det_conf)
+                        box.append(cls_max_conf)
+                        box.append(cls_max_id)
+                        boxes.append(box)
+    t3 = time.time()
+    if False:
+        print('---------------------------------')
+        print('matrix computation : %f' % (t1-t0))
+        print('        gpu to cpu : %f' % (t2-t1))
+        print('      boxes filter : %f' % (t3-t2))
+        print('---------------------------------')
+    return boxes
+
+def get_region_boxes(output, num_classes, num_keypoints, only_objectness=1, validation=False):
 
     # Parameters
     anchor_dim = 1
@@ -229,9 +316,9 @@ def get_region_boxes(output, num_classes, num_keypoints, only_objectness=1, vali
     # Activation
     t0 = time.time()
     max_conf = -sys.maxsize
-    output    = output.view(batch*anchor_dim, 2*num_keypoints+1+num_classes, h*w).transpose(0,1).contiguous().view(2*num_keypoints+1+num_classes, batch*anchor_dim*h*w)
-    grid_x    = torch.linspace(0, w-1, w).repeat(h,1).repeat(batch*anchor_dim, 1, 1).view(batch*anchor_dim*h*w).cuda()
-    grid_y    = torch.linspace(0, h-1, h).repeat(w,1).t().repeat(batch*anchor_dim, 1, 1).view(batch*anchor_dim*h*w).cuda()
+    output = output.view(batch*anchor_dim, 2*num_keypoints+1+num_classes, h*w).transpose(0,1).contiguous().view(2*num_keypoints+1+num_classes, batch*anchor_dim*h*w)
+    grid_x = torch.linspace(0, w-1, w).repeat(h,1).repeat(batch*anchor_dim, 1, 1).view(batch*anchor_dim*h*w).cuda()
+    grid_y = torch.linspace(0, h-1, h).repeat(w,1).t().repeat(batch*anchor_dim, 1, 1).view(batch*anchor_dim*h*w).cuda()
 
     xs = list()
     ys = list()
@@ -296,7 +383,6 @@ def get_region_boxes(output, num_classes, num_keypoints, only_objectness=1, vali
         print('      boxes filter : %f' % (t3-t2))
         print('---------------------------------')
     return box
-
 
 def get_region_boxes2(output, conf_thresh, num_classes, only_objectness=1, validation=False):
 
@@ -416,33 +502,33 @@ def get_region_boxes2(output, conf_thresh, num_classes, only_objectness=1, valid
                                     box.append(tmp_conf)
                                     box.append(c)
                         boxes.append(box)
-            if len(boxes) == 0:
-                bcx0 = xs0[max_ind]
-                bcy0 = ys0[max_ind]
-                bcx1 = xs1[max_ind]
-                bcy1 = ys1[max_ind]
-                bcx2 = xs2[max_ind]
-                bcy2 = ys2[max_ind]
-                bcx3 = xs3[max_ind]
-                bcy3 = ys3[max_ind]
-                bcx4 = xs4[max_ind]
-                bcy4 = ys4[max_ind]
-                bcx5 = xs5[max_ind]
-                bcy5 = ys5[max_ind]
-                bcx6 = xs6[max_ind]
-                bcy6 = ys6[max_ind]
-                bcx7 = xs7[max_ind]
-                bcy7 = ys7[max_ind]
-                bcx8 = xs8[max_ind]
-                bcy8 = ys8[max_ind]
-                cls_max_conf = cls_max_confs[max_ind]
-                cls_max_id = cls_max_ids[max_ind]
-                det_conf =  det_confs[max_ind]
-                box = [bcx0/w, bcy0/h, bcx1/w, bcy1/h, bcx2/w, bcy2/h, bcx3/w, bcy3/h, bcx4/w, bcy4/h, bcx5/w, bcy5/h, bcx6/w, bcy6/h, bcx7/w, bcy7/h, bcx8/w, bcy8/h, det_conf, cls_max_conf, cls_max_id]
-                boxes.append(box)
-                all_boxes.append(boxes)
-            else:
-                all_boxes.append(boxes)
+            # if len(boxes) == 0:
+            #     bcx0 = xs0[max_ind]
+            #     bcy0 = ys0[max_ind]
+            #     bcx1 = xs1[max_ind]
+            #     bcy1 = ys1[max_ind]
+            #     bcx2 = xs2[max_ind]
+            #     bcy2 = ys2[max_ind]
+            #     bcx3 = xs3[max_ind]
+            #     bcy3 = ys3[max_ind]
+            #     bcx4 = xs4[max_ind]
+            #     bcy4 = ys4[max_ind]
+            #     bcx5 = xs5[max_ind]
+            #     bcy5 = ys5[max_ind]
+            #     bcx6 = xs6[max_ind]
+            #     bcy6 = ys6[max_ind]
+            #     bcx7 = xs7[max_ind]
+            #     bcy7 = ys7[max_ind]
+            #     bcx8 = xs8[max_ind]
+            #     bcy8 = ys8[max_ind]
+            #     cls_max_conf = cls_max_confs[max_ind]
+            #     cls_max_id = cls_max_ids[max_ind]
+            #     det_conf =  det_confs[max_ind]
+            #     box = [bcx0/w, bcy0/h, bcx1/w, bcy1/h, bcx2/w, bcy2/h, bcx3/w, bcy3/h, bcx4/w, bcy4/h, bcx5/w, bcy5/h, bcx6/w, bcy6/h, bcx7/w, bcy7/h, bcx8/w, bcy8/h, det_conf, cls_max_conf, cls_max_id]
+            #     boxes.append(box)
+            #     all_boxes.append(boxes)
+            # else:
+            #     all_boxes.append(boxes)
 
         all_boxes.append(boxes)
     t3 = time.time()
@@ -452,9 +538,7 @@ def get_region_boxes2(output, conf_thresh, num_classes, only_objectness=1, valid
         print('        gpu to cpu : %f' % (t2-t1))
         print('      boxes filter : %f' % (t3-t2))
         print('---------------------------------')
-    return all_boxes
-
-
+    return boxes
 
 def read_truths(lab_path, num_keypoints=9):
     num_labels = 2*num_keypoints+3 # +2 for width, height, +1 for class label
@@ -584,59 +668,26 @@ def logging(message):
 #         return np.array([])
 
 
+# def do_detect(boxes, img, nms_thresh):
 
+#     if isinstance(img, Image.Image):
+#         width = img.width
+#         height = img.height
+#         img = torch.ByteTensor(torch.ByteStorage.from_buffer(img.tobytes()))
+#         img = img.view(height, width, 3).transpose(0,1).transpose(0,2).contiguous()
+#         img = img.view(1, 3, height, width)
+#         img = img.float().div(255.0)
+#     elif type(img) == np.ndarray: # cv2 image
+#         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+#         img = torch.from_numpy(img.transpose(2,0,1)).float().div(255.0).unsqueeze(0)
+#     else:
+#         print("unknow image type")
+#         exit(-1)
 
-def do_detect(model, img, conf_thresh, nms_thresh, use_cuda=1):
-    model.eval()
-    t0 = time.time()
+#     img = img.cuda()
+#     img = torch.autograd.Variable(img)
 
-    if isinstance(img, Image.Image):
-        width = img.width
-        height = img.height
-        img = torch.ByteTensor(torch.ByteStorage.from_buffer(img.tobytes()))
-        img = img.view(height, width, 3).transpose(0,1).transpose(0,2).contiguous()
-        img = img.view(1, 3, height, width)
-        img = img.float().div(255.0)
-    elif type(img) == np.ndarray: # cv2 image
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = torch.from_numpy(img.transpose(2,0,1)).float().div(255.0).unsqueeze(0)
-    else:
-        print("unknow image type")
-        exit(-1)
-
-    t1 = time.time()
-
-    if use_cuda:
-        img = img.cuda()
-    img = torch.autograd.Variable(img)
-    t2 = time.time()
-
-    output = model(img)
-    output = output.data
-    #for j in range(100):
-    #    sys.stdout.write('%f ' % (output.storage()[j]))
-    #print('')
-    t3 = time.time()
-
-    # boxes = get_region_boxes(output, conf_thresh, model.num_classes, model.anchors, model.num_anchors)[0]
-    boxes = get_region_boxes(output, model.num_classes, model.num_keypoints )
-    for j in range(len(boxes)):
-       print("boxes at", j, boxes[j])
-    t4 = time.time()
-
-    boxes = nms(boxes, nms_thresh)
-    t5 = time.time()
-
-    if False:
-        print('-----------------------------------')
-        print(' image to tensor : %f' % (t1 - t0))
-        print('  tensor to cuda : %f' % (t2 - t1))
-        print('         predict : %f' % (t3 - t2))
-        print('get_region_boxes : %f' % (t4 - t3))
-        print('             nms : %f' % (t5 - t4))
-        print('           total : %f' % (t5 - t0))
-        print('-----------------------------------')
-    return boxes
+#     return nms(boxes, nms_thresh)
 
 
 def nms(boxes, nms_thresh):
@@ -644,22 +695,27 @@ def nms(boxes, nms_thresh):
         return boxes
 
     det_confs = torch.zeros(len(boxes))
+
+    idx = 4
     for i in range(len(boxes)):
-        # det_confs[i] = 1-boxes[i][4]
-        det_confs[i] = 1-boxes[i]
+        det_confs[i] = 1-boxes[i][idx]
+        # det_confs[i] = 1-boxes[i]
+        # print(det_confs[i])
 
     _,sortIds = torch.sort(det_confs)
     out_boxes = []
     for i in range(len(boxes)):
         box_i = boxes[sortIds[i]]
-        if box_i > 0:
-            out_boxes.append(box_i)
+        # print('box_i', box_i)
+        if box_i[idx] > 0:
             for j in range(i+1, len(boxes)):
                 box_j = boxes[sortIds[j]]
-                if bbox_iou(box_i, box_j, x1y1x2y2=False) > nms_thresh:
-                    print(box_i, box_j, bbox_iou(box_i, box_j, x1y1x2y2=False))
+                if bbox_iou(box_i, box_j, x1y1x2y2=False).numpy().squeeze() > nms_thresh:
+                    out_boxes.append(box_i)
+                    print('IOC', bbox_iou(box_i, box_j, x1y1x2y2=False).numpy().squeeze())
                     box_j = 0
     return out_boxes
+
 
 def bbox_iou(box1, box2, x1y1x2y2=False):
     if x1y1x2y2:

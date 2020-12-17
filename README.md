@@ -50,8 +50,12 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 
 ### 3. output
 * you should see output similar to this
-![Alt text](img/onigiripick.png?raw=true "yolo6d pose")
 ![Alt text](img/yolo6dpose.png?raw=true "yolo6d pose")
+
+<br />
+
+* with aist-moveit pkg for Pick-n-Place
+![Alt text](img/onigiripick.png?raw=true "yolo6d pose")
 
 <!-- <br />
 

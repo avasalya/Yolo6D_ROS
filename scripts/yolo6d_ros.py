@@ -17,7 +17,8 @@ class Yolo6D:
         self.classes     = 1
         self.img_width   = 640
         self.img_height  = 480
-        self.conf_thresh = 0.7
+        self.conf_thresh = 0.35
+        self.nms_thresh  = 0.5
         self.frameID     = frameID
 
         # GPU settings
@@ -67,11 +68,10 @@ class Yolo6D:
         self.points = np.float32([[.1, 0, 0], [0, .1, 0], [0, 0, .1], [0, 0, 0]]).reshape(-1, 3)
 
 
-
     def callback(self, rgb, depth):
         # convert ros-msg into numpy array
         self.img = np.frombuffer(rgb.data, dtype=np.uint8).reshape(rgb.height, rgb.width, -1)
-        self.depth = np.frombuffer(depth.data, dtype=np.float32).reshape(depth.height, depth.width, -1)
+        self.depth = np.frombuffer(depth.data, dtype=np.uint16).reshape(depth.height, depth.width, -1) #dtype=np.float32
 
         # estimate pose
         try:
@@ -88,19 +88,24 @@ class Yolo6D:
         output = self.model(data).data
 
         # using confidence threshold, eliminate low-confidence predictions
-        self.all_boxes = get_region_boxes2(output, self.conf_thresh, self.classes)
-        # all_boxes = do_detect(self.model, self.img, 0.1, 0.4)
+        # self.all_boxes = get_region_boxes2(output, self.conf_thresh, self.classes)
+        self.all_boxes = get_region_boxes0(output, self.conf_thresh, self.classes)
+        # print(self.all_boxes)
+        print('found boxes, after removing low confidence', len(self.all_boxes))
+
+        # apply NMS to further remove double detection
+        self.all_boxes = nms(self.all_boxes, self.nms_thresh)
+        print('found boxes, after further applying NMS boxes', len(self.all_boxes))
+
 
         boxesList = []
         objsPose  = []
-        boxes = self.all_boxes[0]
-        print(len(boxes)-1, f'{Fore.YELLOW}onigiri(s) found{Style.RESET_ALL}')
+        print(len(self.all_boxes), f'{Fore.YELLOW}onigiri(s) found{Style.RESET_ALL}')
 
         # for each image, get all the predictions
-        for j in range(len(boxes)-1):
+        for j in range(len(self.all_boxes)):
 
-            # ignore 1st box (NOTE: not sure why its incorrect)
-            box_pr = boxes[j+1]
+            box_pr = self.all_boxes[j]
             print(f'{Fore.GREEN}at confidence {Style.RESET_ALL}', str(round(float(box_pr[18])*100)) + '%')
 
             # denormalize the corner predictions
@@ -125,7 +130,7 @@ class Yolo6D:
             boxesList.append(proj_corners_pr)
 
             # draw axes
-            self.draw_axis(self.img, cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0])
+            self.draw_axes(self.img, cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0])
 
             # convert pose to ros-msg
             poseTransform = np.concatenate((Rt_pr, np.asarray([[0, 0, 0, 1]])), axis=0)
@@ -148,14 +153,14 @@ class Yolo6D:
         self.publisher(objsPose)
 
 
-    def draw_axis(self, img, axisPoints):
-        img = cv2.line(img, tuple(axisPoints[3].ravel()),
-                            tuple(axisPoints[0].ravel()), (255,0,0), 2)
-        img = cv2.line(img, tuple(axisPoints[3].ravel()),
-                            tuple(axisPoints[1].ravel()), (0,255,0), 2)
-        img = cv2.line(img, tuple(axisPoints[3].ravel()),
-                            tuple(axisPoints[2].ravel()), (0,0,255), 2)
-        cv2.circle(img, tuple(axisPoints[3].ravel()), 5, (0, 255, 255), -1)
+    def draw_axes(self, img, axesPoint):
+        img = cv2.line(img, tuple(axesPoint[3].ravel()),
+                            tuple(axesPoint[0].ravel()), (255,0,0), 2)
+        img = cv2.line(img, tuple(axesPoint[3].ravel()),
+                            tuple(axesPoint[1].ravel()), (0,255,0), 2)
+        img = cv2.line(img, tuple(axesPoint[3].ravel()),
+                            tuple(axesPoint[2].ravel()), (0,0,255), 2)
+        cv2.circle(img, tuple(axesPoint[3].ravel()), 5, (0, 255, 255), -1)
 
 
     def visualize(self, img, boxesList, drawCuboid=True):
