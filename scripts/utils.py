@@ -660,68 +660,35 @@ def get_image_size(fname):
 def logging(message):
     print('%s %s' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), message))
 
-# def read_pose(lab_path):
-#     if os.path.getsize(lab_path):
-#         truths = np.loadtxt(lab_path)
-#         return truths
-#     else:
-#         return np.array([])
-
-
-# def do_detect(boxes, img, nms_thresh):
-
-#     if isinstance(img, Image.Image):
-#         width = img.width
-#         height = img.height
-#         img = torch.ByteTensor(torch.ByteStorage.from_buffer(img.tobytes()))
-#         img = img.view(height, width, 3).transpose(0,1).transpose(0,2).contiguous()
-#         img = img.view(1, 3, height, width)
-#         img = img.float().div(255.0)
-#     elif type(img) == np.ndarray: # cv2 image
-#         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-#         img = torch.from_numpy(img.transpose(2,0,1)).float().div(255.0).unsqueeze(0)
-#     else:
-#         print("unknow image type")
-#         exit(-1)
-
-#     img = img.cuda()
-#     img = torch.autograd.Variable(img)
-
-#     return nms(boxes, nms_thresh)
-
-
 def nms(boxes, nms_thresh):
     if len(boxes) == 0:
         return boxes
 
     det_confs = torch.zeros(len(boxes))
 
-    idx = 4
+    idx = 18
     for i in range(len(boxes)):
-        det_confs[i] = 1-boxes[i][idx]
-        # det_confs[i] = 1-boxes[i]
-        # print(det_confs[i])
+        det_confs[i] = boxes[i][idx]
 
-    _,sortIds = torch.sort(det_confs)
+    # _,sortIds = torch.sort(det_confs)
     out_boxes = []
     for i in range(len(boxes)):
-        box_i = boxes[sortIds[i]]
-        # print('box_i', box_i)
-        if box_i[idx] > 0:
-            for j in range(i+1, len(boxes)):
-                box_j = boxes[sortIds[j]]
-                if bbox_iou(box_i, box_j, x1y1x2y2=False).numpy().squeeze() > nms_thresh:
-                    out_boxes.append(box_i)
-                    print('IOC', bbox_iou(box_i, box_j, x1y1x2y2=False).numpy().squeeze())
-                    box_j = 0
+        box_i = boxes[i]
+        for j in range(i+1, len(boxes)):
+            box_j = boxes[j]
+            iou = bbox_iou(box_i, box_j)
+            if iou > nms_thresh:
+                # print('IOU', iou)
+                out_boxes.append(box_i)
+                box_j = 0
+    # print('found boxes, after further applying NMS boxes', len(out_boxes))
     return out_boxes
-
 
 def bbox_iou(box1, box2, x1y1x2y2=False):
     if x1y1x2y2:
         mx = min(box1[0], box2[0])
-        Mx = max(box1[2], box2[2])
         my = min(box1[1], box2[1])
+        Mx = max(box1[2], box2[2])
         My = max(box1[3], box2[3])
         w1 = box1[2] - box1[0]
         h1 = box1[3] - box1[1]
@@ -729,8 +696,8 @@ def bbox_iou(box1, box2, x1y1x2y2=False):
         h2 = box2[3] - box2[1]
     else:
         mx = min(box1[0]-box1[2]/2.0, box2[0]-box2[2]/2.0)
-        Mx = max(box1[0]+box1[2]/2.0, box2[0]+box2[2]/2.0)
         my = min(box1[1]-box1[3]/2.0, box2[1]-box2[3]/2.0)
+        Mx = max(box1[0]+box1[2]/2.0, box2[0]+box2[2]/2.0)
         My = max(box1[1]+box1[3]/2.0, box2[1]+box2[3]/2.0)
         w1 = box1[2]
         h1 = box1[3]
@@ -749,3 +716,33 @@ def bbox_iou(box1, box2, x1y1x2y2=False):
     carea = cw * ch
     uarea = area1 + area2 - carea
     return carea/uarea
+
+
+def nmsv2(dets, nms_thresh):
+    x1 = dets[:, 0]
+    y1 = dets[:, 1]
+    x2 = dets[:, 2]
+    y2 = dets[:, 3]
+    scores = dets[:, 4]
+
+    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
+    order = scores.argsort()[::-1]
+
+    keep = []
+    while order.size > 0:
+        i = order[0]
+        keep.append(i)
+        xx1 = np.maximum(x1[i], x1[order[1:]])
+        yy1 = np.maximum(y1[i], y1[order[1:]])
+        xx2 = np.minimum(x2[i], x2[order[1:]])
+        yy2 = np.minimum(y2[i], y2[order[1:]])
+
+        w = np.maximum(0.0, xx2 - xx1 + 1)
+        h = np.maximum(0.0, yy2 - yy1 + 1)
+        inter = w * h
+        ovr = inter / (areas[i] + areas[order[1:]] - inter)
+
+        inds = np.where(ovr <= nms_thresh)[0]
+        order = order[inds + 1]
+
+    return keep

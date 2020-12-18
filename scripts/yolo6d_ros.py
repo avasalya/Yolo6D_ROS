@@ -17,9 +17,12 @@ class Yolo6D:
         self.classes     = 1
         self.img_width   = 640
         self.img_height  = 480
-        self.conf_thresh = 0.35
-        self.nms_thresh  = 0.5
         self.frameID     = frameID
+        self.conf_thresh = 0.2
+        self.dd_remove   = True
+        self.dd_thresh   = 25
+        self.NMS         = True
+        self.nms_thresh  = 0.1
 
         # GPU settings
         seed = int(time.time())
@@ -88,25 +91,24 @@ class Yolo6D:
         output = self.model(data).data
 
         # using confidence threshold, eliminate low-confidence predictions
-        # self.all_boxes = get_region_boxes2(output, self.conf_thresh, self.classes)
         self.all_boxes = get_region_boxes0(output, self.conf_thresh, self.classes)
-        # print(self.all_boxes)
-        print('found boxes, after removing low confidence', len(self.all_boxes))
+        # print('found boxes, after removing low confidence', len(self.all_boxes))
 
-        # apply NMS to further remove double detection
-        self.all_boxes = nms(self.all_boxes, self.nms_thresh)
-        print('found boxes, after further applying NMS boxes', len(self.all_boxes))
-
+        # apply NMS to further remove double detection NOTE: its aggressive
+        if self.NMS:
+            self.all_boxes = nms(self.all_boxes, self.nms_thresh)
+            # self.all_boxes = nmsv2(self.all_boxes, self.nms_thresh)
 
         boxesList = []
-        objsPose  = []
-        print(len(self.all_boxes), f'{Fore.YELLOW}onigiri(s) found{Style.RESET_ALL}')
+        posesList = []
+        sortNorms = []
+        sortConfs = []
+        axesList  = []
 
         # for each image, get all the predictions
         for j in range(len(self.all_boxes)):
 
             box_pr = self.all_boxes[j]
-            print(f'{Fore.GREEN}at confidence {Style.RESET_ALL}', str(round(float(box_pr[18])*100)) + '%')
 
             # denormalize the corner predictions
             corners2D_pr = np.array(np.reshape(box_pr[:18], [9, 2]), dtype='float32')
@@ -122,15 +124,19 @@ class Yolo6D:
                 Rz = rotation_matrix(m.pi/2, [0, 0, -1], t_pr.ravel())
                 offR = concatenate_matrices(Rx)[:3,:3]
                 R_pr = np.dot(R_pr, offR[:3, :3])
-
             Rt_pr = np.concatenate((R_pr, t_pr), axis=1)
+
+            # make list of sorted conf and predicted pose centeroid
+            axesPoints = cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0]
+            axesList.append(axesPoints)
+            centroid_norm = np.linalg.norm(axesPoints[3].ravel())
+            sortNorms.append(round(centroid_norm))
+            conf_pr = round(float(box_pr[18])*100)
+            sortConfs.append(conf_pr)
 
             # compute projections
             proj_corners_pr = np.transpose(compute_projection(self.corners3D, Rt_pr, self.cam_mat))
             boxesList.append(proj_corners_pr)
-
-            # draw axes
-            self.draw_axes(self.img, cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0])
 
             # convert pose to ros-msg
             poseTransform = np.concatenate((Rt_pr, np.asarray([[0, 0, 0, 1]])), axis=0)
@@ -144,23 +150,52 @@ class Yolo6D:
                     'qx':quat[1],
                     'qy':quat[2],
                     'qz':quat[3]}
-            objsPose.append(pose)
+            posesList.append(pose)
+
+        # filter out low confidence double detections(dd)
+        if self.dd_remove:
+            sortNorms = sorted(sortNorms)
+            # print('sorted norms', sortNorms)
+            sortConfs = sorted(sortConfs)
+            # print('sorted conf', sortConfs)
+
+            indices = []
+            for j in range(len(sortNorms)-1):
+                # pick only double detection boxes
+                if (sortNorms[j+1] - sortNorms[j]) <= self.dd_thresh:
+                    # remove with lower confidence
+                    if (sortConfs[j+1] > sortConfs[j]):
+                        index = j
+                    else:
+                        index = j+1
+                    indices.append(index)
+
+            # remove lower conf double detection
+            # print('indices', sorted(indices, reverse=True))
+            for idx in sorted(indices, reverse=True):
+                del axesList[idx]
+                del boxesList[idx]
+                del posesList[idx]
+
+        # draw axes
+        self.draw_axes(self.img, axesList)
 
         # visualize Projections
         self.visualize(self.img, boxesList, drawCuboid=True)
 
         # publish pose as ros-msg
-        self.publisher(objsPose)
+        self.publisher(posesList)
 
 
-    def draw_axes(self, img, axesPoint):
-        img = cv2.line(img, tuple(axesPoint[3].ravel()),
-                            tuple(axesPoint[0].ravel()), (255,0,0), 2)
-        img = cv2.line(img, tuple(axesPoint[3].ravel()),
-                            tuple(axesPoint[1].ravel()), (0,255,0), 2)
-        img = cv2.line(img, tuple(axesPoint[3].ravel()),
-                            tuple(axesPoint[2].ravel()), (0,0,255), 2)
-        cv2.circle(img, tuple(axesPoint[3].ravel()), 5, (0, 255, 255), -1)
+    def draw_axes(self, img, axesList):
+        for axesPoint in axesList:
+            img = cv2.line(img, tuple(axesPoint[3].ravel()),
+                                tuple(axesPoint[0].ravel()), (255,0,0), 2)
+            img = cv2.line(img, tuple(axesPoint[3].ravel()),
+                                tuple(axesPoint[1].ravel()), (0,255,0), 2)
+            img = cv2.line(img, tuple(axesPoint[3].ravel()),
+                                tuple(axesPoint[2].ravel()), (0,0,255), 2)
+            cv2.circle(img, tuple(axesPoint[3].ravel()), 5, (0, 255, 255), -1)
 
 
     def visualize(self, img, boxesList, drawCuboid=True):
@@ -188,15 +223,16 @@ class Yolo6D:
         if key == 27:
             print('stopping, keyboard interrupt')
             os._exit(0)
+        print(len(boxesList), f'{Fore.YELLOW}onigiri(s) found{Style.RESET_ALL}')
 
 
-    def publisher(self, objsPose):
+    def publisher(self, posesList):
         marker_array = MarkerArray()
 
         pose_array = PoseArray()
         pose_array.header.stamp = rospy.Time.now()
         pose_array.header.frame_id = self.frameID
-        poses = objsPose
+        poses = posesList
 
         for p in range(len(poses)):
             pose2msg = Pose()
@@ -208,7 +244,7 @@ class Yolo6D:
             pose2msg.orientation.y = poses[p]['qy']
             pose2msg.orientation.z = poses[p]['qz']
             pose_array.poses.append(pose2msg)
-            print(f'{Fore.RED} poseArray{Style.RESET_ALL}', pose_array.poses[p])
+            print(p, f'{Fore.RED} poseArray{Style.RESET_ALL}', pose_array.poses[p])
 
             marker = Marker()
             marker.header.stamp = rospy.Time.now()
