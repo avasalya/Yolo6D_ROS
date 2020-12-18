@@ -30,7 +30,7 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 
 
 ## consider tuning `thresholds` as per your *scene* to avoid double detection and for better performance
-* change values @ [scripts/yolo6d_ros.py#L20](https://github.com/avasalya/Yolo6D_ROS/blob/39b13e2f959cfb8ce12b7cd2c301c6879276437e/scripts/yolo6d_ros.py#L20) onwards
+* change values @ [scripts/yolo6d_ros.py#L21](https://github.com/avasalya/Yolo6D_ROS/blob/a1569e1a106a3f329d20d21a6087f9b658df3fba/scripts/yolo6d_ros.py#L21) onwards
 * tune `dd_thresh`
 * tune `conf_thresh`
 * tune `nms_thresh` (its aggressive)

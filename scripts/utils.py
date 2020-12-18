@@ -717,8 +717,8 @@ def bbox_iou(box1, box2, x1y1x2y2=False):
     uarea = area1 + area2 - carea
     return carea/uarea
 
-
 def nmsv2(dets, nms_thresh):
+
     x1 = dets[:, 0]
     y1 = dets[:, 1]
     x2 = dets[:, 2]
@@ -746,3 +746,7 @@ def nmsv2(dets, nms_thresh):
         order = order[inds + 1]
 
     return keep
+
+
+# remove multiple indices from a list
+# axesList = [i for j, i in enumerate(axesList) if j not in indices]
