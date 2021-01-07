@@ -20,13 +20,14 @@ class Yolo6D:
         self.img_height  = 480
         self.frameID     = frameID
         self.conf_thresh = 0.2
-        self.dd_remove   = False
+        self.dd_remove   = True
         self.dd_thresh   = 5
         self.NMS         = False
         self.nms_thresh  = 0.1
 
         # initiate ROS node
-        rospy.init_node(self.weightfile.split('weights')[0], anonymous=False)
+        self.modelNname = self.weightfile.split('weights')[0] + "NMS_" + str(self.NMS) + "_DD_" + str(self.dd_remove)
+        rospy.init_node(self.modelNname, anonymous=False)
         rospy.loginfo('starting onigiriPose node....')
 
         # GPU settings
@@ -223,7 +224,7 @@ class Yolo6D:
                 img = cv2.line(img, tuple(corner[4]), tuple(corner[5]), color, linewidth)
                 img = cv2.line(img, tuple(corner[4]), tuple(corner[6]), color, linewidth)
                 img = cv2.line(img, tuple(corner[6]), tuple(corner[7]), color, linewidth)
-        cv2.imshow('yolo6d pose ' + self.weightfile.split('weights')[0], img)
+        cv2.imshow('yolo6d pose ' + self.modelNname, img)
         key = cv2.waitKey(1) & 0xFF
         if key == 27:
             print('stopping, keyboard interrupt')
