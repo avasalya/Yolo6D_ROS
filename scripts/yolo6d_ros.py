@@ -4,25 +4,30 @@ from __init__ import *
 class Yolo6D:
 
     def __init__(self, datacfg, subRGBTopic, subDepthTopic, frameID):
+
         # parameters
         options          = read_data_cfg(datacfg)
         fx               = float(options['fx'])
         fy               = float(options['fy'])
         cx               = float(options['cx'])
         cy               = float(options['cy'])
-        weightfile       = options['weightfile']
+        gpus             = options['gpus']
         modelcfg         = options['modelcfg']
         meshfile         = options['meshfile']
-        gpus             = options['gpus']
+        self.weightfile  = options['weightfile']
         self.classes     = 1
         self.img_width   = 640
         self.img_height  = 480
         self.frameID     = frameID
         self.conf_thresh = 0.2
-        self.dd_remove   = True
-        self.dd_thresh   = 25
-        self.NMS         = True
+        self.dd_remove   = False
+        self.dd_thresh   = 5
+        self.NMS         = False
         self.nms_thresh  = 0.1
+
+        # initiate ROS node
+        rospy.init_node(self.weightfile.split('weights')[0], anonymous=False)
+        rospy.loginfo('starting onigiriPose node....')
 
         # GPU settings
         seed = int(time.time())
@@ -42,7 +47,7 @@ class Yolo6D:
         self.model = Darknet(os.path.join(path, modelcfg))
 
         # load trained weights
-        self.model.load_weights(os.path.join(path, weightfile))
+        self.model.load_weights(os.path.join(path, self.weightfile))
 
         # pass to GPU
         self.model.cuda()
@@ -218,7 +223,7 @@ class Yolo6D:
                 img = cv2.line(img, tuple(corner[4]), tuple(corner[5]), color, linewidth)
                 img = cv2.line(img, tuple(corner[4]), tuple(corner[6]), color, linewidth)
                 img = cv2.line(img, tuple(corner[6]), tuple(corner[7]), color, linewidth)
-        cv2.imshow('yolo6d pose', img)
+        cv2.imshow('yolo6d pose ' + self.weightfile.split('weights')[0], img)
         key = cv2.waitKey(1) & 0xFF
         if key == 27:
             print('stopping, keyboard interrupt')
@@ -244,7 +249,7 @@ class Yolo6D:
             pose2msg.orientation.y = poses[p]['qy']
             pose2msg.orientation.z = poses[p]['qz']
             pose_array.poses.append(pose2msg)
-            print(p, f'{Fore.RED} poseArray{Style.RESET_ALL}', pose_array.poses[p])
+            # print(p, f'{Fore.RED} poseArray{Style.RESET_ALL}', pose_array.poses[p])
 
             marker = Marker()
             marker.header.stamp = rospy.Time.now()
@@ -277,10 +282,6 @@ class Yolo6D:
 
 
 if __name__ == '__main__':
-
-    # initiate ROS node
-    rospy.init_node('onigiriPose', anonymous=False)
-    rospy.loginfo('starting onigiriPose node....')
 
     # run Yolo6D
     path = os.path.join(os.path.dirname(__file__), '../txonigiri')
