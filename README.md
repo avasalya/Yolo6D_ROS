@@ -70,9 +70,23 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 * refer this repository to train on your custom dataset https://github.com/avasalya/singleshot6Dpose
 
 # Create your own custom dataset
-* use this repository to create your own dataset for Yolo6D (develop branch) https://github.com/avasalya/RapidPoseLabels/tree/develop
- 	* I have made changes in the original repository to meet the necessary requirements to produce dataset for yolo6D.
-	* you can find original work here, https://github.com/rohanpsingh/RapidPoseLabels
+## Label files
+
+ Label files consist of 21 ground-truth values. We predict 9 points corresponding to the centroid and corners of the 3D object model. Additionally we predict the class in each cell. That makes 9x2+1 = 19 points. In multi-object training, during training, we assign whichever anchor box has the most similar size to the current object as the responsible one to predict the 2D coordinates for that object. To encode the size of the objects, we have additional 2 numbers for the range in x dimension and y dimension. Therefore, we have 9x2+1+2 = 21 numbers.
+
+Respectively, 21 numbers correspond to the following: 1st number: class label, 2nd number: x0 (x-coordinate of the centroid), 3rd number: y0 (y-coordinate of the centroid), 4th number: x1 (x-coordinate of the first corner), 5th number: y1 (y-coordinate of the first corner), ..., 18th number: x8 (x-coordinate of the eighth corner), 19th number: y8 (y-coordinate of the eighth corner), 20th number: x range, 21st number: y range.
+
+The coordinates are normalized by the image width and height: x / image_width and y / image_height. This is useful to have similar output ranges for the coordinate regression and object classification tasks.
+
+* use this repository to create your own dataset for Yolo6D (develop branch) https://github.com/avasalya/RapidPoseLabels/tree/develop (instructions are provided)
+
+   * I have made changes in the original repository to meet the necessary requirements to produce dataset for yolo6D.
+
+  * please read `dataset.sh` for further instructions on how to create your own dataset
+
+  * once you run `dataset.sh`, this will generate the `out_cur_date` folder with several contents, however to train `Yolo6D` you just need to copy `rgb`, `mask`, `label` folders, and `train.txt`, `test.txt`, `yourObject.ply` files.
+
+  * Please refer to original work here for further support, https://github.com/rohanpsingh/RapidPoseLabels, PS: but my forked branch is not updated.
 
 <!-- <br />
 # Known issues -->
