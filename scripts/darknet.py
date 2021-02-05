@@ -57,6 +57,7 @@ class EmptyModule(nn.Module):
 
 # support route shortcut and reorg
 class Darknet(nn.Module):
+
     def __init__(self, cfgfile, distiling=False):
         super(Darknet, self).__init__()
         self.blocks = parse_cfg(cfgfile)
@@ -358,7 +359,6 @@ class Darknet(nn.Module):
                 pass
             else:
                 print('unknown type %s' % (block['type']))
-
 
     def save_weights(self, outfile, cutoff=0):
         if cutoff <= 0:

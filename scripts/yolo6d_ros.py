@@ -158,7 +158,7 @@ class Yolo6D:
                     'qz':quat[3]}
             posesList.append(pose)
 
-        # filter out low confidence double detections(dd)
+        # NOTE: filter out low confidence double detections(dd) TODO: consider depth too
         if self.dd_remove:
             sortNorms = sorted(sortNorms)
             # print('sorted norms', sortNorms)

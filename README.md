@@ -7,7 +7,8 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 * refer `environment.yml` for other anaconda packages
 
 ## adapted from
-* https://github.com/microsoft/singleshotpose
+* https://github.com/microsoft/singleshotpose (original)
+* https://github.com/avasalya/singleshot6Dpose (modified for my usage)
 
 ## create conda environment
 * `conda env create -f environment.yml`
@@ -21,7 +22,8 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 * https://github.com/IntelRealSense/realsense-ros
 
 ## download and unzip `txonigiri` within main directory
-* https://www.dropbox.com/sh/wkmqd0w1tvo4592/AADWt9j5SjiklJ5X0dpsSILAa?dl=0
+* https://www.dropbox.com/sh/wkmqd0w1tvo4592/AADWt9j5SjiklJ5X0dpsSILAa?dl=0 (require password)
+*
 	* weights v1.xs and v2.xs were trained on synthetic dataset and v3.x onwards on real dataset
 
 ## change intrinsic parameters as per your camera
@@ -61,6 +63,16 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 * with aist-moveit pkg for Pick-n-Place
 ![Alt text](img/onigiripick.png?raw=true "yolo6d pose")
 
-<!-- <br />
 
+<br />
+
+# Train on custom dataset
+* refer this repository to train on your custom dataset https://github.com/avasalya/singleshot6Dpose
+
+# Create your own custom dataset
+* use this repository to create your own dataset for Yolo6D (develop branch) https://github.com/avasalya/RapidPoseLabels/tree/develop
+ 	* I have made changes in the original repository to meet the necessary requirements to produce dataset for yolo6D.
+	* you can find original work here, https://github.com/rohanpsingh/RapidPoseLabels
+
+<!-- <br />
 # Known issues -->
