@@ -94,10 +94,19 @@ def pnp(points_3D, points_2D, cameraMatrix):
     _, R_exp, t = cv2.solvePnP(points_3D,
                             np.ascontiguousarray(points_2D[:,:2]).reshape((-1,1,2)),
                             cameraMatrix,
-                            distCoeffs)
+                            distCoeffs,flags=cv2.SOLVEPNP_ITERATIVE)
+                            # cv2.SOLVEPNP_ITERATIVE
+                            # cv2.SOLVEPNP_EPNP
+                            # cv2.SOLVEPNP_UPNP
+                            # cv2.SOLVEPNP_DLS
 
-    R, _ = cv2.Rodrigues(R_exp)
-    return R, t
+    _, R_exp, t,_ = cv2.solvePnPGeneric(points_3D,
+                            np.ascontiguousarray(points_2D[:,:2]).reshape((-1,1,2)),
+                            cameraMatrix,
+                            distCoeffs,flags=cv2.SOLVEPNP_EPNP)
+
+    R, _ = cv2.Rodrigues(R_exp[0])
+    return R, t[0]
 
 def get_2d_bb(box, size):
     x = box[0]

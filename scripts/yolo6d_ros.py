@@ -15,18 +15,18 @@ class Yolo6D:
         modelcfg         = options['modelcfg']
         meshfile         = options['meshfile']
         self.weightfile  = options['weightfile']
+        self.conf_thresh = float(options['conf'])
+        self.dd_thresh   = float(options['dd'])
+        self.nms_thresh  = float(options['nms'])
+        self.dd_remove   = options['use_dd']
+        self.NMS         = options['use_nms']
         self.classes     = 1
         self.img_width   = 640
         self.img_height  = 480
         self.frameID     = frameID
-        self.conf_thresh = 0.2
-        self.dd_remove   = True
-        self.dd_thresh   = 5
-        self.NMS         = False
-        self.nms_thresh  = 0.1
 
         # initiate ROS node
-        self.modelNname = self.weightfile.split('weights')[0] + "NMS_" + str(self.NMS) + "_DD_" + str(self.dd_remove)
+        self.modelNname = self.weightfile.split('weights')[0] + "NMS_" + self.NMS + "_DD_" + self.dd_remove
         rospy.init_node(self.modelNname, anonymous=False)
         rospy.loginfo('starting onigiriPose node....')
 
@@ -101,9 +101,8 @@ class Yolo6D:
         # print('found boxes, after removing low confidence', len(self.all_boxes))
 
         # apply NMS to further remove double detection NOTE: its aggressive
-        if self.NMS:
+        if self.NMS == 'True':
             self.all_boxes = nms(self.all_boxes, self.nms_thresh)
-            # self.all_boxes = nmsv2(self.all_boxes, self.nms_thresh)
 
         boxesList = []
         posesList = []
@@ -132,14 +131,6 @@ class Yolo6D:
                 R_pr = np.dot(R_pr, offR[:3, :3])
             Rt_pr = np.concatenate((R_pr, t_pr), axis=1)
 
-            # make list of sorted conf and predicted pose centeroid
-            axesPoints = cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0]
-            axesList.append(axesPoints)
-            centroid_norm = np.linalg.norm(axesPoints[3].ravel())
-            sortNorms.append(round(centroid_norm))
-            conf_pr = round(float(box_pr[18])*100)
-            sortConfs.append(conf_pr)
-
             # compute projections
             proj_corners_pr = np.transpose(compute_projection(self.corners3D, Rt_pr, self.cam_mat))
             boxesList.append(proj_corners_pr)
@@ -148,6 +139,7 @@ class Yolo6D:
             poseTransform = np.concatenate((Rt_pr, np.asarray([[0, 0, 0, 1]])), axis=0)
             quat = quaternion_from_matrix(poseTransform, True) #wxyz
             pos = t_pr.reshape(1,3)
+            # print('pos', pos)
             pose = {
                     'tx':pos[0][0],
                     'ty':pos[0][1],
@@ -158,16 +150,29 @@ class Yolo6D:
                     'qz':quat[3]}
             posesList.append(pose)
 
-        # NOTE: filter out low confidence double detections(dd) TODO: consider depth too
-        if self.dd_remove:
+            # make list of sorted conf and predicted pose(s) centeroid
+            axesPoints = cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0]
+            axesList.append(axesPoints)
+
+            # TODO: consider centroid XY corresponding depth
+            cenX = axesPoints[3].ravel()[0]/self.img_width
+            cenY = axesPoints[3].ravel()[1]/self.img_height
+            # print('x, y', cenX, cenY)
+            sortNorms.append(np.linalg.norm([cenX, cenY]))
+            # sortNorms.append(round(np.linalg.norm(axesPoints[3].ravel())))
+            sortConfs.append(round(float(box_pr[18])*100))
+
+        # filter out low confidence double detections(dd)
+        if self.dd_remove == 'True':
             sortNorms = sorted(sortNorms)
-            # print('sorted norms', sortNorms)
+            print('sorted norms', sortNorms)
             sortConfs = sorted(sortConfs)
-            # print('sorted conf', sortConfs)
+            print('sorted conf', sortConfs)
 
             indices = []
             for j in range(len(sortNorms)-1):
                 # pick only double detection boxes
+                # print("norm diff", sortNorms[j+1] - sortNorms[j])
                 if (sortNorms[j+1] - sortNorms[j]) <= self.dd_thresh:
                     # remove with lower confidence
                     if (sortConfs[j+1] > sortConfs[j]):

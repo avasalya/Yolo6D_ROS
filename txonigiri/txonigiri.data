@@ -1,8 +1,13 @@
 meshfile = txonigiri.ply
 modelcfg = yolo-pose.cfg
-weightfile = modelv9.weights
+weightfile = modelv6.1.weights
 gpus = 0
 fx = 605.286
 fy = 605.699
 cx = 320.075
 cy = 247.877
+conf = 0.2
+use_dd = True
+dd = 0.009
+use_nms = False
+nms = 0.1
