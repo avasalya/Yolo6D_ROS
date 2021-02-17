@@ -674,23 +674,20 @@ def nms(boxes, nms_thresh):
         return boxes
 
     det_confs = torch.zeros(len(boxes))
-
-    idx = 18
     for i in range(len(boxes)):
-        det_confs[i] = boxes[i][idx]
+        det_confs[i] = 1-boxes[i][4]
 
-    # _,sortIds = torch.sort(det_confs)
+    _,sortIds = torch.sort(det_confs)
     out_boxes = []
     for i in range(len(boxes)):
-        box_i = boxes[i]
-        for j in range(i+1, len(boxes)):
-            box_j = boxes[j]
-            iou = bbox_iou(box_i, box_j)
-            if iou > nms_thresh:
-                # print('IOU', iou)
-                out_boxes.append(box_i)
-                box_j = 0
-    # print('found boxes, after further applying NMS boxes', len(out_boxes))
+        box_i = boxes[sortIds[i]]
+        if box_i[4] > 0:
+            out_boxes.append(box_i)
+            for j in range(i+1, len(boxes)):
+                box_j = boxes[sortIds[j]]
+                if bbox_iou(box_i, box_j, x1y1x2y2=False) > nms_thresh:
+                    #print(box_i, box_j, bbox_iou(box_i, box_j, x1y1x2y2=False))
+                    box_j[4] = 0
     return out_boxes
 
 def bbox_iou(box1, box2, x1y1x2y2=False):
@@ -725,37 +722,6 @@ def bbox_iou(box1, box2, x1y1x2y2=False):
     carea = cw * ch
     uarea = area1 + area2 - carea
     return carea/uarea
-
-def nmsv2(dets, nms_thresh):
-
-    x1 = dets[:, 0]
-    y1 = dets[:, 1]
-    x2 = dets[:, 2]
-    y2 = dets[:, 3]
-    scores = dets[:, 4]
-
-    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
-    order = scores.argsort()[::-1]
-
-    keep = []
-    while order.size > 0:
-        i = order[0]
-        keep.append(i)
-        xx1 = np.maximum(x1[i], x1[order[1:]])
-        yy1 = np.maximum(y1[i], y1[order[1:]])
-        xx2 = np.minimum(x2[i], x2[order[1:]])
-        yy2 = np.minimum(y2[i], y2[order[1:]])
-
-        w = np.maximum(0.0, xx2 - xx1 + 1)
-        h = np.maximum(0.0, yy2 - yy1 + 1)
-        inter = w * h
-        ovr = inter / (areas[i] + areas[order[1:]] - inter)
-
-        inds = np.where(ovr <= nms_thresh)[0]
-        order = order[inds + 1]
-
-    return keep
-
 
 # remove multiple indices from a list
 # axesList = [i for j, i in enumerate(axesList) if j not in indices]

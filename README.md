@@ -8,7 +8,7 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 
 ## adapted from
 * https://github.com/microsoft/singleshotpose (original)
-* https://github.com/avasalya/singleshot6Dpose (modified for my usage)
+* https://github.com/avasalya/singleshot6Dpose (modified for onigiri usage)
 
 ## create conda environment
 * `conda env create -f environment.yml`
@@ -22,21 +22,22 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 * https://github.com/IntelRealSense/realsense-ros
 
 ## download and unzip `txonigiri` within main directory
-* https://www.dropbox.com/sh/wkmqd0w1tvo4592/AADWt9j5SjiklJ5X0dpsSILAa?dl=0 (require password)
-*
-	* weights v1.xs and v2.xs were trained on synthetic dataset and v3.x onwards on real dataset
+* https://drive.google.com/drive/folders/19Cc6pna7r8qb4ebS_C8b7RwF3QoFsoeZ?usp=sharing
+	* weights v1.xs and v2.xs were trained on synthetic dataset.
+  * v3.x onwards on real dataset.
+  * only weights v7.x and 8.x trained on tx provided dataset.
 
-## change intrinsic parameters as per your camera
-* fx, fy, cx, cy
-	* `txonigiri/txonigiri.data`
+## change intrinsic parameters as per your camera (`fx, fy, cx, cy`)
+* change values in [txonigiri/txonigiri.data](https://github.com/avasalya/Yolo6D_ROS/blob/main/txonigiri/txonigiri.data)
 
 
 ## consider tuning `thresholds` as per your *scene* to avoid double detection and for better performance
-* change values @ [scripts/yolo6d_ros.py#L21](https://github.com/avasalya/Yolo6D_ROS/blob/a1569e1a106a3f329d20d21a6087f9b658df3fba/scripts/yolo6d_ros.py#L21) onwards
-* tune `dd_thresh`
-* tune `conf_thresh`
-* tune `nms_thresh` (its aggressive)
-* tune `softnms_thresh` (TODO)
+* change values in [txonigiri/txonigiri.data](https://github.com/avasalya/Yolo6D_ROS/blob/main/txonigiri/txonigiri.data)
+* flag `use_dd` (default: `False`)
+* flag `use_nms` (default: `True`)
+* tune `conf`
+* tune `dd`
+* tune `nms`
 
 
 <br />

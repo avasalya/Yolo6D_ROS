@@ -7,23 +7,23 @@ class Yolo6D:
 
         # parameters
         options          = read_data_cfg(datacfg)
+        self.frameID     = frameID
+        self.gpus        = options['gpus']
+        self.modelcfg    = options['modelcfg']
+        self.meshfile    = options['meshfile']
+        self.weightfile  = options['weightfile']
+        self.dd_remove   = options['use_dd']
+        self.NMS         = options['use_nms']
+        self.classes     = int(options['classes'])
+        self.img_width   = int(options['width'])
+        self.img_height  = int(options['height'])
+        self.dd_thresh   = float(options['dd'])
+        self.nms_thresh  = float(options['nms'])
+        self.conf_thresh = float(options['conf'])
         fx               = float(options['fx'])
         fy               = float(options['fy'])
         cx               = float(options['cx'])
         cy               = float(options['cy'])
-        gpus             = options['gpus']
-        modelcfg         = options['modelcfg']
-        meshfile         = options['meshfile']
-        self.weightfile  = options['weightfile']
-        self.conf_thresh = float(options['conf'])
-        self.dd_thresh   = float(options['dd'])
-        self.nms_thresh  = float(options['nms'])
-        self.dd_remove   = options['use_dd']
-        self.NMS         = options['use_nms']
-        self.classes     = 1
-        self.img_width   = 640
-        self.img_height  = 480
-        self.frameID     = frameID
 
         # initiate ROS node
         self.modelNname = self.weightfile.split('weights')[0] + "NMS_" + self.NMS + "_DD_" + self.dd_remove
@@ -33,19 +33,19 @@ class Yolo6D:
         # GPU settings
         seed = int(time.time())
         torch.manual_seed(seed)
-        os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+        os.environ['CUDA_VISIBLE_DEVICES'] = self.gpus
         torch.cuda.manual_seed(seed)
 
         # read intrinsic camera parameters
         self.cam_mat = get_camera_intrinsic(cx, cy, fx, fy)
 
         # Read object model information, get 3D bounding box corners
-        mesh = MeshPly(os.path.join(path, meshfile))
+        mesh = MeshPly(os.path.join(path, self.meshfile))
         vertices = np.c_[np.array(mesh.vertices), np.ones((len(mesh.vertices),1))].transpose()
         self.corners3D = get_3D_corners(vertices)
 
         # Specify model
-        self.model = Darknet(os.path.join(path, modelcfg))
+        self.model = Darknet(os.path.join(path, self.modelcfg))
 
         # load trained weights
         self.model.load_weights(os.path.join(path, self.weightfile))
@@ -63,8 +63,8 @@ class Yolo6D:
         self.rgb_sub = message_filters.Subscriber(subRGBTopic, Image)
         self.depth_sub = message_filters.Subscriber(subDepthTopic, Image)
 
-        # self.ts = message_filters.TimeSynchronizer([self.rgb_sub, self.depth_sub], 9)
-        self.ts = message_filters.ApproximateTimeSynchronizer([self.rgb_sub, self.depth_sub], 10, 1)
+        # self.ts = message_filters.ApproximateTimeSynchronizer([self.rgb_sub, self.depth_sub], 10, 2)
+        self.ts = message_filters.TimeSynchronizer([self.rgb_sub, self.depth_sub], 10)
 
         self.ts.registerCallback(self.callback)
         # self.rgb_sub.registerCallback(self.callback)
@@ -80,7 +80,13 @@ class Yolo6D:
     def callback(self, rgb, depth):
         # convert ros-msg into numpy array
         self.img = np.frombuffer(rgb.data, dtype=np.uint8).reshape(rgb.height, rgb.width, -1)
-        self.depth = np.frombuffer(depth.data, dtype=np.uint16).reshape(depth.height, depth.width, -1) #dtype=np.float32
+        self.depth = np.frombuffer(depth.data, dtype=np.uint16).reshape(depth.height, depth.width, -1)
+        #dtype=np.float32
+
+        # visualize depth
+        self.convertDepth = self.depth.copy()
+        self.convertDepth = cv2.normalize(self.convertDepth, None, alpha = 0, beta = 1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        cv2.imshow("depth ros2numpy", self.convertDepth), cv2.waitKey(1)
 
         # estimate pose
         try:
@@ -90,7 +96,8 @@ class Yolo6D:
 
 
     def pose_estimator(self):
-        # transform into Tensor
+
+        # transform image into Tensor
         data = Variable(self.transform(self.img)).cuda().unsqueeze(0)
 
         # forward pass
@@ -109,9 +116,10 @@ class Yolo6D:
         sortNorms = []
         sortConfs = []
         axesList  = []
+        newDepths = []
 
         # for each image, get all the predictions
-        for j in range(len(self.all_boxes)):
+        for j in range(0, len(self.all_boxes)):
 
             box_pr = self.all_boxes[j]
 
@@ -135,11 +143,45 @@ class Yolo6D:
             proj_corners_pr = np.transpose(compute_projection(self.corners3D, Rt_pr, self.cam_mat))
             boxesList.append(proj_corners_pr)
 
+            # get min/max coordinates of proj_corners
+            minPt = np.min(proj_corners_pr, axis=0)
+            maxPt = np.max(proj_corners_pr, axis=0)
+
+            # gather depth of pixels within the bounding box
+            pixelDepth = self.depth[int(minPt[1]):int(minPt[0]), int(maxPt[1]):int(maxPt[0])].astype(float)
+            # print('Depth pixels ---------',pixelDepth)
+
+            # remove Zeros and NAN before taking depth mean
+            nonZero = pixelDepth[pixelDepth!=0]
+            # print(nonZero)
+
+            # mean of depth pixels
+            meanDepth = np.nanmean(nonZero)*.001 #mm2m
+            # print('mean', meanDepth)
+
+            # visualize just bounding boxes
+            cv2.rectangle(self.img, (int(minPt[0]), int(minPt[1])),
+                        (int(maxPt[0]), int(maxPt[1])), (100,243,34), 2 )
+            cv2.imshow('yolo6d pose ' + self.modelNname, cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB))
+            # key = cv2.waitKey(1) & 0xFF
+            # if key == 27:
+            #     print('stopping, keyboard interrupt')
+            #     os._exit(0)
+
+            # make list of sorted conf and predicted pose(s) centeroid
+            axesPoints = cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0]
+            axesList.append(axesPoints)
+
             # convert pose to ros-msg
             poseTransform = np.concatenate((Rt_pr, np.asarray([[0, 0, 0, 1]])), axis=0)
             quat = quaternion_from_matrix(poseTransform, True) #wxyz
             pos = t_pr.reshape(1,3)
-            # print('pos', pos)
+
+            # print('before', pos)
+            if not math.isnan(meanDepth):
+                pos[0][2] = (pos[0][2] + meanDepth)/2 # NOTE: take mean of both pixel and pred depths
+            # print('after pos', pos, '\n')
+
             pose = {
                     'tx':pos[0][0],
                     'ty':pos[0][1],
@@ -150,35 +192,34 @@ class Yolo6D:
                     'qz':quat[3]}
             posesList.append(pose)
 
-            # make list of sorted conf and predicted pose(s) centeroid
-            axesPoints = cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0]
-            axesList.append(axesPoints)
-
-            # TODO: consider centroid XY corresponding depth
+            # filter out low confidence double detections(dd) based on norm(xy)
             cenX = axesPoints[3].ravel()[0]/self.img_width
             cenY = axesPoints[3].ravel()[1]/self.img_height
-            # print('x, y', cenX, cenY)
             sortNorms.append(np.linalg.norm([cenX, cenY]))
-            # sortNorms.append(round(np.linalg.norm(axesPoints[3].ravel())))
             sortConfs.append(round(float(box_pr[18])*100))
+            newDepths.append(meanDepth)
 
         # filter out low confidence double detections(dd)
         if self.dd_remove == 'True':
             sortNorms = sorted(sortNorms)
-            print('sorted norms', sortNorms)
             sortConfs = sorted(sortConfs)
-            print('sorted conf', sortConfs)
+            # print('sorted norms', sortNorms)
+            # print('sorted conf', sortConfs)
 
             indices = []
             for j in range(len(sortNorms)-1):
+
                 # pick only double detection boxes
-                # print("norm diff", sortNorms[j+1] - sortNorms[j])
+                # print("norm diff outside", sortNorms[j+1] - sortNorms[j])
                 if (sortNorms[j+1] - sortNorms[j]) <= self.dd_thresh:
+
+                    # print("norm diff", sortNorms[j+1] - sortNorms[j])
+                    # if newDepths[j] >= newDepths[j+1]: #consider nearest
                     # remove with lower confidence
-                    if (sortConfs[j+1] > sortConfs[j]):
-                        index = j
-                    else:
+                    if (sortConfs[j+1] >= sortConfs[j]): #consider high conf
                         index = j+1
+                    else:
+                        index = j
                     indices.append(index)
 
             # remove lower conf double detection
