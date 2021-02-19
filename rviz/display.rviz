@@ -54,7 +54,7 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: false
-    - Alpha: 0.5
+    - Alpha: 0.8999999761581421
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
         Max Value: 0.2827855348587036
@@ -78,7 +78,7 @@ Visualization Manager:
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.009999999776482582
-      Style: Flat Squares
+      Style: Points
       Topic: /camera/depth_registered/points
       Unreliable: false
       Use Fixed Frame: true
@@ -182,25 +182,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.1630373001098633
+      Distance: 0.6781768798828125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.06492987275123596
-        Y: 0.06502152234315872
-        Z: 0.47736987471580505
+        X: 0.05762043222784996
+        Y: -0.06461864709854126
+        Z: 0.5475959777832031
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: -1.0347965955734253
+      Pitch: -1.2547963857650757
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.668153762817383
+      Yaw: 4.738155841827393
     Saved: ~
 Window Geometry:
   Displays:

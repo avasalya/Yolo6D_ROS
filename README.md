@@ -35,6 +35,7 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 * change values in [txonigiri/txonigiri.data](https://github.com/avasalya/Yolo6D_ROS/blob/main/txonigiri/txonigiri.data)
 * flag `use_dd` (default: `False`)
 * flag `use_nms` (default: `True`)
+* flag `use_pixelD` (default: `True`)
 * tune `conf`
 * tune `dd`
 * tune `nms`

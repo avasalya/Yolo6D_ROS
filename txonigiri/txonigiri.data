@@ -13,4 +13,5 @@ conf = 0.2
 dd = 0.005
 use_dd = False
 use_nms = True
+use_pixelD = True
 nms = 0.8

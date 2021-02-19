@@ -12,6 +12,7 @@ class Yolo6D:
         self.modelcfg    = options['modelcfg']
         self.meshfile    = options['meshfile']
         self.weightfile  = options['weightfile']
+        self.pixel_depth = options['use_pixelD']
         self.dd_remove   = options['use_dd']
         self.NMS         = options['use_nms']
         self.classes     = int(options['classes'])
@@ -107,7 +108,7 @@ class Yolo6D:
         self.all_boxes = get_region_boxes0(output, self.conf_thresh, self.classes)
         # print('found boxes, after removing low confidence', len(self.all_boxes))
 
-        # apply NMS to further remove double detection NOTE: its aggressive
+        # apply NMS to further remove double detection
         if self.NMS == 'True':
             self.all_boxes = nms(self.all_boxes, self.nms_thresh)
 
@@ -176,10 +177,12 @@ class Yolo6D:
             poseTransform = np.concatenate((Rt_pr, np.asarray([[0, 0, 0, 1]])), axis=0)
             quat = quaternion_from_matrix(poseTransform, True) #wxyz
             pos = t_pr.reshape(1,3)
-
             # print('before', pos)
-            if not math.isnan(meanDepth):
-                pos[0][2] = (pos[0][2] + meanDepth)/2 # NOTE: take mean of both pixel and pred depths
+
+            # take mean of both pixel and pred depths
+            if self.pixel_depth == 'True':
+                if not math.isnan(meanDepth):
+                    pos[0][2] = (pos[0][2] + meanDepth)/2
             # print('after pos', pos, '\n')
 
             pose = {
