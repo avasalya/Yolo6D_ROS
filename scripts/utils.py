@@ -83,7 +83,7 @@ def get_3D_corners(vertices):
     corners = np.concatenate((np.transpose(corners), np.ones((1,8)) ), axis=0)
     return corners
 
-def pnp(points_3D, points_2D, cameraMatrix):
+def pnp(points_3D, points_2D, cameraMatrix, PNPGeneric=False):
     try:
         distCoeffs = pnp.distCoeffs
     except:
@@ -94,19 +94,23 @@ def pnp(points_3D, points_2D, cameraMatrix):
     _, R_exp, t = cv2.solvePnP(points_3D,
                             np.ascontiguousarray(points_2D[:,:2]).reshape((-1,1,2)),
                             cameraMatrix,
-                            distCoeffs,flags=cv2.SOLVEPNP_ITERATIVE)
+                            distCoeffs, flags=cv2.SOLVEPNP_ITERATIVE)
                             # cv2.SOLVEPNP_ITERATIVE
                             # cv2.SOLVEPNP_EPNP
                             # cv2.SOLVEPNP_UPNP
                             # cv2.SOLVEPNP_DLS
 
-    _, R_exp, t,_ = cv2.solvePnPGeneric(points_3D,
-                            np.ascontiguousarray(points_2D[:,:2]).reshape((-1,1,2)),
-                            cameraMatrix,
-                            distCoeffs,flags=cv2.SOLVEPNP_EPNP)
-
-    R, _ = cv2.Rodrigues(R_exp[0])
-    return R, t[0]
+    if PNPGeneric == 'True':
+        # print('using PNP Generic')
+        _, R_exp, t,_ = cv2.solvePnPGeneric(points_3D,
+                                np.ascontiguousarray(points_2D[:,:2]).reshape((-1,1,2)),
+                                cameraMatrix,
+                                distCoeffs,flags=cv2.SOLVEPNP_EPNP)
+        R, _ = cv2.Rodrigues(R_exp[0])
+        return R, t[0]
+    else:
+        R, _ = cv2.Rodrigues(R_exp)
+        return R, t
 
 def get_2d_bb(box, size):
     x = box[0]

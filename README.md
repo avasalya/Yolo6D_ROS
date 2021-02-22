@@ -36,6 +36,7 @@ ROS wrapper for Singleshotpose (Yolo6D) on custom dataset
 * flag `use_dd` (default: `False`)
 * flag `use_nms` (default: `True`)
 * flag `use_pixelD` (default: `True`)
+* flag `use_pnpG` (default: `True`)
 * tune `conf`
 * tune `dd`
 * tune `nms`

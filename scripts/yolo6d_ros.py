@@ -15,6 +15,7 @@ class Yolo6D:
         self.pixel_depth = options['use_pixelD']
         self.dd_remove   = options['use_dd']
         self.NMS         = options['use_nms']
+        self.pnp         = options['use_pnpG']
         self.classes     = int(options['classes'])
         self.img_width   = int(options['width'])
         self.img_height  = int(options['height'])
@@ -130,7 +131,11 @@ class Yolo6D:
             corners2D_pr[:, 1] = corners2D_pr[:, 1] * self.img_height
 
             # compute [R|t] by PnP
-            R_pr, t_pr = pnp(np.array(np.transpose(np.concatenate((np.zeros((3, 1)), self.corners3D[:3, :]), axis=1)), dtype='float32'),  corners2D_pr, np.array(self.cam_mat, dtype='float32'))
+            R_pr, t_pr = pnp(
+                            np.array(np.transpose(np.concatenate((np.zeros((3, 1)), self.corners3D[:3, :]), axis=1)), dtype='float32'),
+                            corners2D_pr,
+                            np.array(self.cam_mat, dtype='float32'),
+                            PNPGeneric=self.pnp)
 
             # transform to align with aist ur5 ef frame
             if len(sys.argv) > 1 and sys.argv[1] == 'pnp':
@@ -144,13 +149,18 @@ class Yolo6D:
             proj_corners_pr = np.transpose(compute_projection(self.corners3D, Rt_pr, self.cam_mat))
             boxesList.append(proj_corners_pr)
 
+            # make list of sorted conf and predicted pose(s) centeroid
+            axesPoints = cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0]
+            axesList.append(axesPoints)
+
             # get min/max coordinates of proj_corners
             minPt = np.min(proj_corners_pr, axis=0)
             maxPt = np.max(proj_corners_pr, axis=0)
 
             # gather depth of pixels within the bounding box
-            pixelDepth = self.depth[int(minPt[1]):int(minPt[0]), int(maxPt[1]):int(maxPt[0])].astype(float)
-            # print('Depth pixels ---------',pixelDepth)
+            # pixelDepth = self.depth[int(minPt[1]):int(minPt[0]), int(maxPt[1]):int(maxPt[0])].astype(float) #avg of bbox
+            pixelDepth = self.depth[int(axesPoints[3].ravel()[1]), int(axesPoints[3].ravel()[0])].astype(float) #centroid
+            # print('Depth pixels ',pixelDepth)
 
             # remove Zeros and NAN before taking depth mean
             nonZero = pixelDepth[pixelDepth!=0]
@@ -169,10 +179,6 @@ class Yolo6D:
             #     print('stopping, keyboard interrupt')
             #     os._exit(0)
 
-            # make list of sorted conf and predicted pose(s) centeroid
-            axesPoints = cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0]
-            axesList.append(axesPoints)
-
             # convert pose to ros-msg
             poseTransform = np.concatenate((Rt_pr, np.asarray([[0, 0, 0, 1]])), axis=0)
             quat = quaternion_from_matrix(poseTransform, True) #wxyz
@@ -183,6 +189,7 @@ class Yolo6D:
             if self.pixel_depth == 'True':
                 if not math.isnan(meanDepth):
                     pos[0][2] = (pos[0][2] + meanDepth)/2
+                    # pos[0][2] = meanDepth
             # print('after pos', pos, '\n')
 
             pose = {
@@ -196,8 +203,8 @@ class Yolo6D:
             posesList.append(pose)
 
             # filter out low confidence double detections(dd) based on norm(xy)
-            cenX = axesPoints[3].ravel()[0]/self.img_width
-            cenY = axesPoints[3].ravel()[1]/self.img_height
+            cenX = axesPoints[3].ravel()[1]/self.img_width
+            cenY = axesPoints[3].ravel()[0]/self.img_height
             sortNorms.append(np.linalg.norm([cenX, cenY]))
             sortConfs.append(round(float(box_pr[18])*100))
             newDepths.append(meanDepth)
@@ -278,7 +285,7 @@ class Yolo6D:
         if key == 27:
             print('stopping, keyboard interrupt')
             os._exit(0)
-        print(len(boxesList), f'{Fore.YELLOW}onigiri(s) found{Style.RESET_ALL}')
+        print(len(boxesList), f'{Fore.YELLOW}onigiri(s) found{Style.RESET_ALL}') #, end='\r')
 
 
     def publisher(self, posesList):
