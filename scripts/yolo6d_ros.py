@@ -26,6 +26,11 @@ class Yolo6D:
         fy               = float(options['fy'])
         cx               = float(options['cx'])
         cy               = float(options['cy'])
+        k1               = float(options['k1'])
+        k2               = float(options['k2'])
+        p1               = float(options['p1'])
+        p2               = float(options['p2'])
+        k3               = float(options['k3'])
 
         # initiate ROS node
         self.modelNname = self.weightfile.split('weights')[0] + "NMS_" + self.NMS + "_DD_" + self.dd_remove
@@ -39,7 +44,8 @@ class Yolo6D:
         torch.cuda.manual_seed(seed)
 
         # read intrinsic camera parameters
-        self.cam_mat = get_camera_intrinsic(cx, cy, fx, fy)
+        self.cam_mat = get_camera_intrinsic(fx, cx, fy, cy)
+        self.distCoeffs = np.array([k1, k2, p1, p2, k3])
 
         # Read object model information, get 3D bounding box corners
         mesh = MeshPly(os.path.join(path, self.meshfile))
@@ -135,6 +141,7 @@ class Yolo6D:
                             np.array(np.transpose(np.concatenate((np.zeros((3, 1)), self.corners3D[:3, :]), axis=1)), dtype='float32'),
                             corners2D_pr,
                             np.array(self.cam_mat, dtype='float32'),
+                            distCoeffs = self.distCoeffs,
                             PNPGeneric=self.pnp)
 
             # transform to align with aist ur5 ef frame
@@ -145,12 +152,14 @@ class Yolo6D:
                 R_pr = np.dot(R_pr, offR[:3, :3])
             Rt_pr = np.concatenate((R_pr, t_pr), axis=1)
 
-            # compute projections
-            proj_corners_pr = np.transpose(compute_projection(self.corners3D, Rt_pr, self.cam_mat))
+            # compute projections #NOTE: consider distCoeffs too
+            # http://opencv.jp/opencv-2.1_org/py/camera_calibration_and_3d_reconstruction.html
+            proj_corners_pr = compute_projection(self.corners3D, Rt_pr, self.cam_mat).transpose()
+            # proj_corners_pr = cv2.projectPoints(self.corners3D, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, self.distCoeffs)[0]
             boxesList.append(proj_corners_pr)
 
             # make list of sorted conf and predicted pose(s) centeroid
-            axesPoints = cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, None)[0]
+            axesPoints = cv2.projectPoints(self.points, cv2.Rodrigues(R_pr)[0], t_pr, self.cam_mat, self.distCoeffs)[0]
             axesList.append(axesPoints)
 
             # get min/max coordinates of proj_corners
@@ -188,8 +197,8 @@ class Yolo6D:
             # take mean of both pixel and pred depths
             if self.pixel_depth == 'True':
                 if not math.isnan(meanDepth):
-                    pos[0][2] = (pos[0][2] + meanDepth)/2
-                    # pos[0][2] = meanDepth
+                    # pos[0][2] = (pos[0][2] + meanDepth)/2
+                    pos[0][2] = meanDepth
             # print('after pos', pos, '\n')
 
             pose = {

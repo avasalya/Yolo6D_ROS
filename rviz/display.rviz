@@ -151,7 +151,7 @@ Visualization Manager:
       Marker Topic: /onigiriPoseMarker
       Name: MarkerArray
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -189,18 +189,18 @@ Visualization Manager:
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.0986914411187172
-        Y: -0.06401228904724121
-        Z: 0.7095345258712769
+        X: -0.039633218199014664
+        Y: -0.0845254510641098
+        Z: 0.7089027762413025
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: -0.539796769618988
+      Pitch: -1.5697963237762451
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.7131524085998535
+      Yaw: 4.658155918121338
     Saved: ~
 Window Geometry:
   Displays:

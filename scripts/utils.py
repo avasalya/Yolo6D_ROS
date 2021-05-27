@@ -34,12 +34,12 @@ def calcAngularDistance(gt_rot, pr_rot):
     trace = np.trace(rotDiff)
     return np.rad2deg(np.arccos((trace-1.0)/2.0))
 
-def get_camera_intrinsic(u0, v0, fx, fy):
-    return np.array([[fx, 0.0, u0], [0.0, fy, v0], [0.0, 0.0, 1.0]])
+def get_camera_intrinsic(fx, cx, fy, cy):
+    return np.array([[fx, 0.0, cx], [0.0, fy, cy], [0.0, 0.0, 1.0]])
 
 def compute_projection(points_3D, transformation, internal_calibration):
     projections_2d = np.zeros((2, points_3D.shape[1]), dtype='float32')
-    camera_projection = (internal_calibration.dot(transformation)).dot(points_3D)
+    camera_projection = (internal_calibration.dot(transformation)).dot(points_3D) #s*m' = A * [R|t] * M'
     projections_2d[0, :] = camera_projection[0, :]/camera_projection[2, :]
     projections_2d[1, :] = camera_projection[1, :]/camera_projection[2, :]
     return projections_2d
@@ -78,16 +78,16 @@ def get_3D_corners(vertices):
                         [max_x, min_y, min_z],
                         [max_x, min_y, max_z],
                         [max_x, max_y, min_z],
-                        [max_x, max_y, max_z]])
+                        [max_x, max_y, max_z]], dtype='float32')
 
     corners = np.concatenate((np.transpose(corners), np.ones((1,8)) ), axis=0)
     return corners
 
-def pnp(points_3D, points_2D, cameraMatrix, PNPGeneric=False):
-    try:
-        distCoeffs = pnp.distCoeffs
-    except:
-        distCoeffs = np.zeros((8, 1), dtype='float32')
+def pnp(points_3D, points_2D, cameraMatrix, distCoeffs=None, PNPGeneric=False):
+    # try:
+    #     distCoeffs = pnp.distCoeffs
+    # except:
+    #     distCoeffs = np.zeros((8, 1), dtype='float32')
 
     assert points_2D.shape[0] == points_2D.shape[0], 'points 3D and points 2D must have same number of vertices'
 
